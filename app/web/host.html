@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GradeStream</title>
+<link rel="icon" type="image/png" href="/icon.png">
+<style>
+  :root { --bg:#121212; --panel:#1b1b1b; --line:#2d2d2d; --text:#e8e8e8; --dim:#8c8c8c; --acc:#e0a040; --ok:#4caf7a; --bad:#e05a50; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 "Segoe UI", -apple-system, Roboto, sans-serif; }
+  header { padding:12px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#555; flex:none; }
+  .dot.live { background:var(--bad); box-shadow:0 0 8px var(--bad); }
+  .dot.pause { background:var(--acc); }
+  .ver { margin-left:auto; color:#555; font-size:12px; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 370px; gap:16px; padding:16px 20px; }
+  @media (max-width:1000px) { main { grid-template-columns:1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:12px; }
+  .panel h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 10px; font-weight:600; }
+  .stage { position:relative; background:#000; border-radius:6px; overflow:hidden; aspect-ratio:16/9; border:1px solid var(--line); }
+  .stage canvas { width:100%; height:100%; display:block; object-fit:contain; }
+  .stage:fullscreen { aspect-ratio:auto; border:none; border-radius:0; }
+  .stage:fullscreen .badge { display:none !important; }
+  #btnFS { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.65); border-color:#444; font-size:12px; padding:5px 10px; }
+  .stage:fullscreen #btnFS { opacity:.25; } .stage:fullscreen #btnFS:hover { opacity:1; }
+  .stage .empty { position:absolute; inset:0; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; color:var(--dim); text-align:center; padding:20px; }
+  .badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.7); color:#ccc; font-size:12px; padding:3px 8px; border-radius:4px; }
+  .mark { position:absolute; width:24px; height:24px; margin:-12px 0 0 -12px; border:2px solid var(--acc); border-radius:50%; box-shadow:0 0 0 2px rgba(0,0,0,.6); pointer-events:none; animation:pulse 1.2s ease-out 3; }
+  .mark span { position:absolute; left:28px; top:-3px; white-space:nowrap; background:rgba(0,0,0,.8); color:#fff; padding:2px 7px; border-radius:4px; font-size:13px; }
+  @keyframes pulse { 0% { transform:scale(1.8); opacity:.3 } 100% { transform:scale(1); opacity:1 } }
+  .row { display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
+  label.l { color:var(--dim); min-width:100px; }
+  select, input[type=text] { background:#0d0d0d; color:var(--text); border:1px solid var(--line); border-radius:5px; padding:7px 8px; font:inherit; }
+  input[type=text] { flex:1; min-width:0; }
+  button { background:#2a2a2a; color:var(--text); border:1px solid #3a3a3a; border-radius:5px; padding:8px 14px; font:inherit; cursor:pointer; }
+  button:hover { background:#333; }
+  button.primary { background:var(--acc); color:#111; border-color:var(--acc); font-weight:600; }
+  button.danger { background:transparent; color:var(--bad); border-color:var(--bad); }
+  button:disabled { opacity:.4; cursor:default; }
+  button.link { background:none; border:none; color:var(--acc); padding:0; text-decoration:underline; }
+  .muted { color:var(--dim); font-size:12px; }
+  .warn { color:var(--acc); }
+  .bad { color:var(--bad); }
+  .ok { color:var(--ok); }
+  .viewer { padding:6px 0; border-top:1px solid var(--line); font-size:13px; }
+  .viewer:first-child { border-top:none; }
+  #marks div { padding:6px 0; border-top:1px solid var(--line); font-size:13px; }
+  #marks div:first-child { border-top:none; }
+  /* Диалог формата */
+  .seg { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  @media (max-width:420px) { .seg { grid-template-columns:1fr; } }
+  .seg label { cursor:pointer; }
+  .seg input { position:absolute; opacity:0; pointer-events:none; }
+  .seg span { display:block; border:1px solid var(--line); border-radius:7px; padding:9px 10px; background:#0d0d0d; }
+  .seg span b { display:block; font-weight:600; }
+  .seg span i { font-style:normal; color:var(--dim); font-size:12px; }
+  .seg input:checked + span { border-color:var(--acc); background:rgba(224,160,64,.08); }
+  .seg input:focus-visible + span { outline:2px solid var(--acc); }
+  #qrBig { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:20; cursor:zoom-out; flex-direction:column; gap:14px; }
+  #qrBig img { width:min(70vh, 80vw); height:min(70vh, 80vw); background:#fff; padding:18px; border-radius:12px; }
+  #fmtDlg { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:10; }
+  #fmtDlg .box { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:22px; width:min(560px, 92vw); }
+  #fmtDlg h3 { margin:0 0 6px; font-size:17px; }
+  .opt { display:block; border:1px solid var(--line); border-radius:7px; padding:10px 12px; margin:8px 0; cursor:pointer; }
+  .opt:hover { border-color:#555; }
+  .opt input { margin-right:8px; }
+  .opt .d { color:var(--dim); font-size:12px; margin:3px 0 0 24px; }
+  .opt.rec b::after { content:" — рекомендуется"; color:var(--acc); font-weight:400; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="dot" id="liveDot"></div>
+  <h1>GradeStream</h1>
+  <span class="muted" id="liveText">не транслируется</span>
+  <span class="ver"><span id="verInfo"></span>v__VERSION__</span>
+</header>
+
+<main>
+  <section>
+    <div class="stage" id="stage">
+      <canvas id="out" width="1920" height="1080"></canvas>
+      <div class="empty" id="empty">
+        <div>Нажми «Выбрать экран» и укажи монитор с Clean Feed</div>
+        <div class="muted">Здесь будет ровно то, что видит клиент: 1920×1080</div>
+      </div>
+      <div class="badge" id="badge" style="display:none"></div>
+      <button id="btnFS" title="Двойной клик по превью тоже разворачивает">Во весь экран</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="btnStart">Выбрать экран</button>
+      <button id="btnPause" disabled>Пауза</button>
+      <button class="danger" id="btnStop" disabled>Остановить</button>
+      <span class="muted" id="fmtInfo"></span>
+      <button class="link" id="btnFmt" style="display:none">изменить</button>
+    </div>
+    <p class="muted">В DaVinci Resolve: Workspace → Video Clean Feed → второй монитор. Здесь выбери «Весь экран» → этот монитор. Само окно GradeStream держи на другом мониторе.</p>
+    <p class="muted bad" id="errBox"></p>
+  </section>
+
+  <aside>
+    <div class="panel">
+      <h2>Как смотрят</h2>
+      <div class="seg">
+        <label><input type="radio" name="mode" value="internet" checked><span><b>Интернет</b><i>удалённо</i></span></label>
+        <label><input type="radio" name="mode" value="lan"><span><b>Wi-Fi</b><i>в комнате</i></span></label>
+        <label><input type="radio" name="mode" value="both"><span><b>Оба сразу</b><i>и там, и там</i></span></label>
+      </div>
+    </div>
+
+    <div class="panel" id="netPanel">
+      <h2>Ссылка для клиента</h2>
+      <div class="row"><input type="text" id="link" readonly placeholder="поднимаю туннель…"><button id="btnCopy" disabled>Копировать</button></div>
+      <div class="muted" id="tunnelInfo">Подключаюсь к Cloudflare…</div>
+    </div>
+
+    <div class="panel" id="lanPanel" style="display:none">
+      <h2>Ссылка в сети Wi-Fi</h2>
+      <div class="row"><input type="text" id="lanLink" readonly placeholder="включаю…"><button id="btnLanCopy" disabled>Копировать</button></div>
+      <div class="row" id="lanIpRow" style="display:none"><label class="l">Адрес</label><select id="lanIp" style="flex:1;min-width:0"></select></div>
+      <div id="qrBox" style="display:none;text-align:center;margin:10px 0 4px">
+        <img id="qr" alt="QR-код ссылки" style="width:210px;height:210px;background:#fff;border-radius:8px;padding:8px;cursor:zoom-in" title="Нажми, чтобы показать крупно">
+        <div class="muted">Наведите камеру телефона на код</div>
+      </div>
+      <div class="muted" id="lanInfo">Видео идёт напрямую по Wi-Fi, без интернета: задержка около 0,1 с. Телефоны должны быть в той же сети, что и компьютер.</div>
+      <div class="muted warn" id="lanWarn" style="margin-top:6px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Качество (выход всегда 1920×1080)</h2>
+      <div class="row"><label class="l">Битрейт</label>
+        <select id="bitrate">
+          <option value="4000000">4 Мбит/с — слабый интернет</option>
+          <option value="8000000" selected>8 Мбит/с</option>
+          <option value="12000000">12 Мбит/с</option>
+          <option value="16000000">16 Мбит/с</option>
+          <option value="24000000">24 Мбит/с — максимум деталей</option>
+        </select></div>
+      <div class="row"><label class="l">Кадры/с</label>
+        <select id="fps">
+          <option value="12">12 — экономия трафика</option>
+          <option value="24">24</option>
+          <option value="25" selected>25</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="60">60</option>
+        </select></div>
+      <div class="muted" id="encInfo"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Звук</h2>
+      <div class="row">
+        <select id="audioSrc" style="flex:1;min-width:0"><option value="none">Без звука — легче сигнал</option></select>
+        <button id="btnAudioRefresh" title="Обновить список устройств и приложений">↻</button>
+      </div>
+      <div class="row"><label class="l">Битрейт звука</label>
+        <select id="abitrate">
+          <option value="64000">64 кбит/с</option>
+          <option value="128000" selected>128 кбит/с</option>
+          <option value="192000">192 кбит/с</option>
+        </select></div>
+      <div class="row"><span class="muted" style="min-width:100px">Уровень</span>
+        <div style="flex:1;height:8px;background:#0d0d0d;border:1px solid var(--line);border-radius:4px;overflow:hidden"><div id="meterBar" style="height:100%;width:0;background:var(--ok);transition:width .08s"></div></div></div>
+      <div class="muted" id="audioInfo">Звук передаётся только во время трансляции.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Зрители <span id="vcount">0</span></h2>
+      <div id="viewers" class="muted">пока никого</div>
+    </div>
+
+    <div class="panel">
+      <h2>Метки клиента</h2>
+      <label class="row" style="margin-top:0"><input type="checkbox" id="ovOn" checked> Показывать метки поверх Clean Feed</label>
+      <div class="row"><label class="l">Монитор</label><select id="ovMon" style="flex:1;min-width:0"><option value="-1">определится после выбора экрана</option></select></div>
+      <div class="row"><button id="btnClearMarks">Убрать метки с экрана</button></div>
+      <div class="muted" id="ovInfo">Метки видишь только ты — Windows не пускает это окно в захват, клиенту они не уходят.</div>
+      <div style="height:1px;background:var(--line);margin:10px 0"></div>
+      <label class="row"><input type="checkbox" id="snapOn" checked> Сохранять скриншот каждой метки</label>
+      <div class="muted" style="word-break:break-all">Сохраняется в: <span id="snapPath" style="color:var(--text)">…</span></div>
+      <div class="row"><button id="btnChoose">Выбрать папку…</button><button id="btnFolder">Открыть папку</button><button id="btnSummary" disabled>Все комментарии</button></div>
+      <label class="row" style="margin:4px 0"><input type="checkbox" id="snapSub" checked> Отдельная подпапка на каждую сессию</label>
+      <div class="muted" id="snapInfo"><button class="link" id="btnResetFolder" style="display:none">вернуть папку по умолчанию (Документы\GradeStream)</button></div>
+      <div style="height:1px;background:var(--line);margin:10px 0"></div>
+      <div id="marks" class="muted">Клиент может нажать «Отметить точку» и тапнуть по кадру — метка появится на превью.</div>
+    </div>
+  </aside>
+</main>
+
+<div id="qrBig"><img id="qrBigImg" alt="QR-код ссылки"><div id="qrBigText" style="font-size:18px"></div><div class="muted">Нажми, чтобы закрыть</div></div>
+
+<div id="fmtDlg">
+  <div class="box">
+    <h3>Разрешение экрана не 1920×1080</h3>
+    <div class="muted" id="fmtWhy"></div>
+    <form id="fmtForm"></form>
+    <label class="muted" style="display:block;margin:10px 0"><input type="checkbox" id="fmtRemember" checked> Запомнить для этого разрешения</label>
+    <div class="row" style="justify-content:flex-end"><button class="primary" id="fmtOk">Применить</button></div>
+  </div>
+</div>
+
+<script>
+const KEY = '__HOST_KEY__';
+const OUT_W = 1920, OUT_H = 1080;
+const $ = id => document.getElementById(id);
+const canvas = $('out');
+const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+ctx.fillStyle = '#000'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+
+let ws = null, stream = null, reader = null, encoder = null;
+let running = false, paused = false;
+let srcW = 0, srcH = 0, mode = null, rect = null;   // rect: {sx,sy,sw,sh,dx,dy,dw,dh}
+let kfPending = true, lastKF = 0, lastEnc = 0, lastNewFrame = 0, frameCount = 0;
+let viewerList = [];
+
+function err(t) { $('errBox').textContent = t || ''; if (t) console.error(t); }
+
+// ================= Связь с программой =================
+function connectWS() {
+  ws = new WebSocket(`ws://${location.host}/ws/host?key=${KEY}`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => {
+    sendJSON({ t: 'audio-list' });
+    sendJSON(diagMsg());
+    if (running && encoder) { forceKey(); sendLive(); applyAudio(); }
+  };
+  ws.onclose = () => setTimeout(connectWS, 1000);
+  ws.onmessage = e => {
+    if (typeof e.data !== 'string') { onPCM(e.data); return; }
+    const m = JSON.parse(e.data);
+    if (m.t === 'audio-list') { fillAudioList(m); return; }
+    if (m.t === 'audio-state') { onAudioState(m); return; }
+    if (m.t === 'monitors') { fillMonitors(m.list || []); return; }
+    if (m.t === 'overlay-error') { $('ovInfo').innerHTML = `<span class="bad">${esc(m.error)}</span>`; return; }
+    if (m.t === 'state') renderState(m);
+    else if (m.t === 'kf') requestKey();
+    else if (m.t === 'mark') showMark(m);
+    else if (m.t === 'cmd' && m.action === 'stop') stopCapture(true);
+  };
+}
+function sendJSON(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+setInterval(() => sendJSON({ t: 'ping' }), 10000);
+connectWS();
+
+function sendLive() { sendJSON({ t: 'live', on: running }); if (running) sendJSON({ t: 'pause', on: paused }); if (lastConfigMsg) sendJSON(lastConfigMsg); }
+
+// ================= Формат 1920×1080 =================
+function crop169(w, h) {
+  // Максимальная область 16:9 по центру
+  let cw = w, ch = Math.round(w * 9 / 16);
+  if (ch > h) { ch = h; cw = Math.round(h * 16 / 9); }
+  cw -= cw % 2; ch -= ch % 2;
+  return { sx: Math.round((w - cw) / 2), sy: Math.round((h - ch) / 2), sw: cw, sh: ch };
+}
+
+function fmtOptions(w, h) {
+  const is169 = Math.abs(w / h - 16 / 9) < 0.005;
+  const opts = [];
+  if (is169) {
+    const dir = w > OUT_W ? 'Даунскейл' : 'Апскейл';
+    opts.push({ id: 'scale', rec: true, title: `${dir} ${w}×${h} → 1920×1080`,
+      desc: w > OUT_W ? 'Пропорции те же (16:9), картинка уменьшается целиком. Стандартный путь для 4K / 1440p.' : 'Пропорции те же, картинка увеличивается. Детализация не прибавится, но формат будет стандартный.' });
+    if (w > OUT_W) opts.push({ id: 'crop1', title: 'Кроп 1920×1080 из центра без масштаба',
+      desc: 'Клиент увидит только центральный фрагмент экрана, зато пиксель в пиксель — удобно для проверки шума, зерна и деталей.' });
+  } else {
+    const c = crop169(w, h);
+    const exact = c.sw === OUT_W && c.sh === OUT_H;
+    const what = w / h > 16 / 9 ? 'по бокам' : 'сверху и снизу';
+    opts.push({ id: 'crop', rec: true,
+      title: exact ? `Кроп лишнего: 1920×1080 из центра (${what})` : `Кроп до 16:9 (${c.sw}×${c.sh} из центра) → ${c.sw > OUT_W ? 'даунскейл' : 'апскейл'} до 1920×1080`,
+      desc: exact ? `Обрезаются полосы ${what}, остальное пиксель в пиксель. Resolve выводит Clean Feed 16:9 по центру такого монитора — значит, обрезается только пустое поле.`
+                  : `Обрезаются полосы ${what}, остаётся область 16:9. Resolve выводит Clean Feed именно туда, поэтому картинка не теряется.` });
+    opts.push({ id: 'fit', title: 'Вписать весь экран с чёрными полями',
+      desc: 'Ничего не обрезается, но картинка меньше и с полями. Пригодится, если кадр выведен не по центру.' });
+  }
+  return opts;
+}
+
+function computeRect(w, h, m) {
+  if (m === 'scale') return { sx: 0, sy: 0, sw: w, sh: h, dx: 0, dy: 0, dw: OUT_W, dh: OUT_H };
+  if (m === 'crop1') return { sx: Math.round((w - OUT_W) / 2), sy: Math.round((h - OUT_H) / 2), sw: OUT_W, sh: OUT_H, dx: 0, dy: 0, dw: OUT_W, dh: OUT_H };
+  if (m === 'crop') { const c = crop169(w, h); return { ...c, dx: 0, dy: 0, dw: OUT_W, dh: OUT_H }; }
+  if (m === 'fit') {
+    const s = Math.min(OUT_W / w, OUT_H / h), dw = Math.round(w * s), dh = Math.round(h * s);
+    return { sx: 0, sy: 0, sw: w, sh: h, dx: Math.round((OUT_W - dw) / 2), dy: Math.round((OUT_H - dh) / 2), dw, dh };
+  }
+  return { sx: 0, sy: 0, sw: w, sh: h, dx: 0, dy: 0, dw: OUT_W, dh: OUT_H }; // exact
+}
+
+const MODE_NAMES = { exact: '1920×1080 без изменений', scale: 'масштаб до 1920×1080', crop1: 'центр 1920×1080 1:1', crop: 'кроп до 16:9', fit: 'вписано с полями' };
+
+function applyMode(m) {
+  mode = m;
+  rect = computeRect(srcW, srcH, m);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+  ctx.imageSmoothingEnabled = !(rect.sw === rect.dw && rect.sh === rect.dh);
+  ctx.imageSmoothingQuality = 'high';
+  $('fmtInfo').textContent = `Экран ${srcW}×${srcH} → ${MODE_NAMES[m]}`;
+  $('btnFmt').style.display = m === 'exact' ? 'none' : '';
+  forceKey();
+}
+
+function storeKey(w, h) { return `gs.fmt.${w}x${h}`; }
+function savedMode(w, h) { try { return localStorage.getItem(storeKey(w, h)); } catch { return null; } }
+
+function onSourceSize(w, h) {
+  srcW = w; srcH = h;
+  sendJSON({ t: 'monitors' });   // подобрать монитор для меток по разрешению
+  if (w === OUT_W && h === OUT_H) { applyMode('exact'); return; }
+  const opts = fmtOptions(w, h);
+  const saved = savedMode(w, h);
+  if (saved && opts.some(o => o.id === saved)) { applyMode(saved); return; }
+  applyMode(opts.find(o => o.rec).id);     // пока клиент видит рекомендуемый вариант
+  openFmtDialog();
+}
+
+function openFmtDialog() {
+  const opts = fmtOptions(srcW, srcH);
+  const is169 = Math.abs(srcW / srcH - 16 / 9) < 0.005;
+  $('fmtWhy').textContent = `Захваченный экран: ${srcW}×${srcH}${is169 ? ' (16:9)' : ` (${(srcW / srcH).toFixed(2)}:1, не 16:9)`}. Клиенту всегда уходит 1920×1080 — выбери, как привести.`;
+  $('fmtForm').innerHTML = opts.map(o => `
+    <label class="opt${o.rec ? ' rec' : ''}"><input type="radio" name="m" value="${o.id}" ${o.id === mode ? 'checked' : ''}><b>${o.title}</b><div class="d">${o.desc}</div></label>`).join('');
+  $('fmtDlg').style.display = 'flex';
+}
+$('btnFmt').onclick = openFmtDialog;
+$('fmtOk').onclick = () => {
+  const v = new FormData($('fmtForm')).get('m');
+  if (v) {
+    applyMode(v);
+    if ($('fmtRemember').checked) try { localStorage.setItem(storeKey(srcW, srcH), v); } catch {}
+  }
+  $('fmtDlg').style.display = 'none';
+};
+
+// ================= Кодер H.264 =================
+let lastConfigMsg = null, codecName = '';
+
+async function pickCodec(fps, bitrate) {
+  // Внутри сети видео идёт по WebRTC — там любой телефон гарантированно принимает только Constrained Baseline
+  const list = netMode !== 'internet'
+    ? (fps > 30 ? ['avc1.42e02a', 'avc1.42e032'] : ['avc1.42e028', 'avc1.42e02a', 'avc1.42e032'])
+    : (fps > 30 ? ['avc1.64002a', 'avc1.4d002a', 'avc1.42e02a'] : ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.64002a']);
+  for (const hw of ['prefer-hardware', 'no-preference']) {
+    for (const codec of list) {
+      const cfg = { codec, width: OUT_W, height: OUT_H, bitrate, framerate: fps, latencyMode: 'realtime',
+                    hardwareAcceleration: hw, avc: { format: 'avc' } };
+      try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return r.config; } catch {}
+    }
+  }
+  return null;
+}
+
+async function setupEncoder() {
+  const fps = +$('fps').value, bitrate = +$('bitrate').value;
+  const cfg = await pickCodec(fps, bitrate);
+  if (!cfg) { err('Браузер не поддерживает кодирование H.264 (WebCodecs). Обновите Microsoft Edge или Google Chrome.'); return false; }
+  if (encoder && encoder.state !== 'closed') { try { encoder.close(); } catch {} }
+  encoder = new VideoEncoder({
+    output: onChunk,
+    error: e => { err('Ошибка кодера: ' + e.message + ' — перезапускаю'); setTimeout(() => running && setupEncoder(), 500); },
+  });
+  encoder.configure(cfg);
+  codecName = `${cfg.codec} · ${cfg.hardwareAcceleration === 'prefer-hardware' ? 'аппаратный' : 'программный'}`;
+  $('encInfo').textContent = `Кодек H.264 ${codecName}`;
+  forceKey();
+  return true;
+}
+
+function b64(buf) {
+  const u = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+function onChunk(chunk, meta) {
+  if (meta && meta.decoderConfig) {
+    const dc = meta.decoderConfig;
+    lastConfigMsg = { t: 'config', codec: dc.codec, w: OUT_W, h: OUT_H,
+                      description: dc.description ? b64(dc.description) : null, colorSpace: dc.colorSpace || null };
+    sendJSON(lastConfigMsg);
+  }
+  if (!ws || ws.readyState !== 1) return;
+  const isKey = chunk.type === 'key';
+  // Если локальный канал перегружен — пропускаем обычные кадры
+  if (!isKey && ws.bufferedAmount > 8e6) { forceKey(); return; }
+  const buf = new ArrayBuffer(9 + chunk.byteLength);
+  const dv = new DataView(buf);
+  dv.setUint8(0, isKey ? 1 : 0);
+  dv.setFloat64(1, chunk.timestamp);
+  chunk.copyTo(new Uint8Array(buf, 9));
+  ws.send(buf);
+}
+
+function forceKey() { kfPending = true; }
+function requestKey() {
+  kfPending = true;
+  // Экран статичен — новых кадров нет. Перекодируем текущую картинку.
+  setTimeout(() => { if (kfPending && running) encodeCanvas(true); }, 120);
+}
+
+function encodeCanvas(force) {
+  if (!encoder || encoder.state !== 'configured' || (paused && !force)) return;
+  const now = performance.now();
+  const key = kfPending || now - lastKF > 3000;
+  if (!force && !key && encoder.encodeQueueSize > 2) return;      // кодер не успевает — пропуск кадра
+  const vf = new VideoFrame(canvas, { timestamp: Math.round(now * 1000) });
+  try { encoder.encode(vf, { keyFrame: key }); } catch (e) { err('encode: ' + e.message); }
+  vf.close();
+  if (key) { kfPending = false; lastKF = now; }
+  lastEnc = now; frameCount++;
+  remember(Math.round(now * 1000));
+}
+
+// ---------- История кадров для скриншотов меток ----------
+// Клиент видит картинку с задержкой, поэтому сохраняем тот кадр, который был у него на экране.
+const frameHistory = [];             // { ts, bmp } — примерно 4,5 секунды
+let lastRemember = 0;
+function remember(ts) {
+  if (!$('snapOn').checked) return;
+  const now = performance.now();
+  if (now - lastRemember < 150) return;
+  lastRemember = now;
+  createImageBitmap(canvas).then(bmp => {
+    frameHistory.push({ ts, bmp });
+    while (frameHistory.length > 30) frameHistory.shift().bmp.close();
+  }).catch(() => {});
+}
+function frameAt(ts) {
+  if (!frameHistory.length) return null;
+  if (!ts) return frameHistory[frameHistory.length - 1].bmp;
+  let best = frameHistory[0];
+  for (const h of frameHistory) if (h.ts <= ts) best = h;
+  return best.bmp;
+}
+
+let snapCount = 0;
+function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+
+async function saveSnapshot(m, x, y) {
+  // Внутри сети телефон сообщает свою задержку показа — берём кадр, который был у него на экране
+  if (!m.ts && m.lag != null) m.ts = Math.round((performance.now() - Math.min(2000, Math.max(0, +m.lag || 0)) - 40) * 1000);
+  const src = frameAt(+m.ts || 0);
+  const oc = new OffscreenCanvas(OUT_W, OUT_H);
+  const c = oc.getContext('2d');
+  if (src) c.drawImage(src, 0, 0); else c.drawImage(canvas, 0, 0);
+  const n = snapCount + 1;
+  const px = x * OUT_W, py = y * OUT_H;
+  // Метка: кольцо и перекрестие
+  for (const [color, width] of [['rgba(0,0,0,.85)', 8], ['#e0a040', 4]]) {
+    c.strokeStyle = color; c.lineWidth = width;
+    c.beginPath(); c.arc(px, py, 28, 0, Math.PI * 2); c.stroke();
+    c.beginPath();
+    c.moveTo(px - 46, py); c.lineTo(px - 32, py); c.moveTo(px + 32, py); c.lineTo(px + 46, py);
+    c.moveTo(px, py - 46); c.lineTo(px, py - 32); c.moveTo(px, py + 32); c.lineTo(px, py + 46);
+    c.stroke();
+  }
+  // Номер и комментарий рядом с точкой
+  c.font = '600 28px "Segoe UI", sans-serif';
+  c.textBaseline = 'middle';
+  const label = `№${n}` + (m.text ? `  ${m.text}` : '');
+  const tw = Math.min(c.measureText(label).width, OUT_W - 120);
+  let bx = px + 56, by = Math.min(Math.max(py - 24, 8), OUT_H - 56);
+  if (bx + tw + 24 > OUT_W - 8) bx = px - 56 - tw - 24;
+  if (bx < 8) bx = 8;
+  c.fillStyle = 'rgba(15,15,15,.88)'; roundRect(c, bx, by, tw + 24, 48, 8); c.fill();
+  c.fillStyle = '#fff'; c.fillText(label, bx + 12, by + 25, tw);
+  // Подпись внизу: номер, время, устройство, комментарий
+  const t = new Date().toLocaleTimeString('ru-RU');
+  c.fillStyle = 'rgba(0,0,0,.72)'; c.fillRect(0, OUT_H - 44, OUT_W, 44);
+  c.font = '22px "Segoe UI", sans-serif'; c.fillStyle = '#ddd';
+  c.fillText(`№${n} · ${t} · ${m.dev || 'клиент'}` + (m.text ? ` · ${m.text}` : ''), 16, OUT_H - 22, OUT_W - 32);
+
+  const blob = await oc.convertToBlob({ type: 'image/png' });
+  const dataURL = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+  const resp = await fetch(`/api/snapshot?key=${KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dev: m.dev || '', text: m.text || '', x: Math.round(px), y: Math.round(py), marked: dataURL }) });
+  const j = await resp.json();
+  if (!j.ok) throw new Error(j.error || 'не сохранилось');
+  snapCount = j.n;
+  return j;
+}
+
+function openFolder(what) { fetch(`/api/open-folder?key=${KEY}` + (what ? `&what=${what}` : '')); }
+
+// ================= Захват =================
+$('btnStart').onclick = startCapture;
+// ---------- Что умеет браузер ----------
+function browserName() {
+  const ua = navigator.userAgent;
+  let m = ua.match(/Edg\/(\d+)/); if (m) return { name: 'Microsoft Edge', ver: +m[1], edge: true };
+  m = ua.match(/Chrome\/(\d+)/); if (m) return { name: 'Chrome', ver: +m[1] };
+  m = ua.match(/Firefox\/(\d+)/); if (m) return { name: 'Firefox', ver: +m[1] };
+  return { name: 'браузер', ver: 0 };
+}
+function missingFeatures() {
+  const miss = [];
+  if (!isSecureContext) miss.push('защищённого режима страницы');
+  if (!('VideoEncoder' in window)) miss.push('кодера видео (WebCodecs)');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) miss.push('захвата экрана');
+  return miss;
+}
+const BR = browserName();
+const CAPTURE_MODE = 'MediaStreamTrackProcessor' in window ? 'покадрово' : 'через видеоэлемент';
+function diagMsg() {
+  return { t: 'diag', ua: navigator.userAgent, secure: isSecureContext, videoEncoder: 'VideoEncoder' in window,
+    audioEncoder: 'AudioEncoder' in window, mstp: 'MediaStreamTrackProcessor' in window, rvfc: 'requestVideoFrameCallback' in HTMLVideoElement.prototype };
+}
+$('verInfo').textContent = `${BR.name} ${BR.ver || ''} · захват ${CAPTURE_MODE} · `;
+showBrowserProblem();   // сразу показать, если браузер не подходит
+function showBrowserProblem() {
+  const miss = missingFeatures();
+  if (!miss.length) return false;
+  const how = BR.edge
+    ? 'Обновите Microsoft Edge: откройте в Edge адрес <b>edge://settings/help</b>, дождитесь обновления, затем закройте и снова запустите GradeStream.'
+    : 'Обновите браузер до последней версии (или установите Microsoft Edge / Google Chrome) и перезапустите GradeStream.';
+  $('errBox').innerHTML = `${BR.name} ${BR.ver || ''}: не хватает ${miss.join(', ')}. ${how}`;
+  return true;
+}
+
+async function startCapture() {
+  err('');
+  if (showBrowserProblem()) return;
+  let s;
+  try {
+    s = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: +$('fps').value, max: 60 }, cursor: 'never' },
+      audio: false, selfBrowserSurface: 'exclude', surfaceSwitching: 'include', monitorTypeSurfaces: 'include',
+    });
+  } catch (e) {
+    if (e.name !== 'NotAllowedError') err('Не удалось захватить экран: ' + e.message);
+    return;
+  }
+  await stopCapture(false);
+  stream = s;
+  const track = stream.getVideoTracks()[0];
+  track.contentHint = 'detail';
+  surface = (track.getSettings && track.getSettings().displaySurface) || 'monitor';
+  track.onended = () => stopCapture(true);
+  if (!await setupEncoder()) { stopCapture(true); return; }
+  running = true; paused = false; srcW = srcH = 0;
+  $('empty').style.display = 'none';
+  setLive();
+  sendLive();
+  applyAudio();
+  readLoop(track);
+}
+
+// Общая обработка нового кадра экрана (VideoFrame или видеоэлемент)
+function handleSourceFrame(src, w, h) {
+  if (w !== srcW || h !== srcH) onSourceSize(w, h);
+  if (!paused && rect) {
+    ctx.drawImage(src, rect.sx, rect.sy, rect.sw, rect.sh, rect.dx, rect.dy, rect.dw, rect.dh);
+    lastNewFrame = performance.now();
+    const minGap = 1000 / +$('fps').value * 0.85;
+    if (performance.now() - lastEnc >= minGap || kfPending) encodeCanvas(false);
+  }
+}
+
+// Запасной захват, если браузер не даёт читать кадры напрямую в окне:
+// экран играет в скрытом видеоэлементе, кадры берутся из него.
+let videoSrc = null, videoTimer = null;
+function readLoopVideo(track) {
+  const v = document.createElement('video');
+  v.muted = true; v.playsInline = true; v.autoplay = true;
+  v.srcObject = new MediaStream([track]);
+  v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none';
+  document.body.appendChild(v);
+  v.play().catch(() => {});
+  videoSrc = v;
+  const tick = () => {
+    if (videoSrc !== v || !running) return;
+    if (v.readyState >= 2 && v.videoWidth) {
+      try { handleSourceFrame(v, v.videoWidth, v.videoHeight); } catch (e) { err('Кадр: ' + e.message); }
+    }
+  };
+  // Окно видно — точно по новым кадрам; свёрнуто — по таймеру (браузер запущен без замедления фоновых таймеров)
+  if (v.requestVideoFrameCallback) {
+    const cb = () => { if (videoSrc !== v) return; tick(); v.requestVideoFrameCallback(cb); };
+    v.requestVideoFrameCallback(cb);
+  }
+  const timer = () => {
+    if (videoSrc !== v) return;
+    if (document.hidden || !v.requestVideoFrameCallback) tick();
+    videoTimer = setTimeout(timer, 1000 / +$('fps').value);
+  };
+  timer();
+}
+
+async function readLoop(track) {
+  if (!('MediaStreamTrackProcessor' in window)) return readLoopVideo(track);
+  const processor = new MediaStreamTrackProcessor({ track });
+  reader = processor.readable.getReader();
+  const myReader = reader;
+  while (true) {
+    let r;
+    try { r = await myReader.read(); } catch { break; }
+    if (r.done) break;
+    const frame = r.value;
+    try { handleSourceFrame(frame, frame.displayWidth, frame.displayHeight); } catch (e) { err('Кадр: ' + e.message); }
+    frame.close();
+  }
+}
+
+async function stopCapture(notify) {
+  running = false;
+  if (reader) { try { await reader.cancel(); } catch {} reader = null; }
+  if (videoSrc) { videoSrc.srcObject = null; videoSrc.remove(); videoSrc = null; clearTimeout(videoTimer); }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (encoder && encoder.state !== 'closed') { try { encoder.close(); } catch {} }
+  encoder = null; lastConfigMsg = null;
+  if (notify) {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+    $('empty').style.display = '';
+    $('fmtInfo').textContent = ''; $('btnFmt').style.display = 'none';
+    setLive();
+    sendJSON({ t: 'live', on: false });
+    audioOff();
+  }
+}
+$('btnStop').onclick = () => stopCapture(true);
+
+$('btnPause').onclick = () => {
+  paused = !paused;
+  if (!paused) forceKey();
+  sendJSON({ t: 'pause', on: paused });
+  setLive();
+};
+
+// Свернули окно во время эфира — программа подскажет, где её искать
+document.addEventListener('visibilitychange', () => { if (document.hidden && running) sendJSON({ t: 'hidden' }); });
+// Закрытие окна во время эфира — спросить подтверждение
+window.addEventListener('beforeunload', e => { if (running) { e.preventDefault(); e.returnValue = ''; } });
+
+function setLive() {
+  document.title = running ? (paused ? 'GradeStream — пауза' : 'GradeStream — в эфире') : 'GradeStream';
+  $('liveDot').className = 'dot' + (running ? (paused ? ' pause' : ' live') : '');
+  $('liveText').textContent = running ? (paused ? 'пауза — клиент видит последний кадр' : 'в эфире') : 'не транслируется';
+  $('btnStop').disabled = !running;
+  $('btnPause').disabled = !running;
+  $('btnPause').textContent = paused ? 'Продолжить' : 'Пауза';
+  $('btnStart').textContent = running ? 'Сменить экран' : 'Выбрать экран';
+}
+
+['bitrate', 'fps'].forEach(id => $(id).onchange = async () => {
+  if (id === 'fps' && stream) { try { await stream.getVideoTracks()[0].applyConstraints({ frameRate: { ideal: +$('fps').value, max: 60 } }); } catch {} }
+  if (running) setupEncoder();
+});
+
+// Счётчик кадров для бейджа
+setInterval(() => {
+  if (!running) { $('badge').style.display = 'none'; return; }
+  $('badge').style.display = '';
+  $('badge').textContent = `1920×1080 · ${(frameCount / 2).toFixed(0)} к/с отправляется` + (paused ? ' · пауза' : '');
+  frameCount = 0;
+}, 2000);
+
+// ================= Звук =================
+// Источник захватывает сама программа (WASAPI), сюда приходит PCM 48 кГц стерео,
+// здесь он кодируется в Opus и уходит зрителям.
+let aenc = null, audioOn = false, audioTs = 0, peak = 0, audioWanted = 'none';
+function loadAudioPref() { try { return JSON.parse(localStorage.getItem('gs.audio') || 'null'); } catch { return null; } }
+function saveAudioPref(p) { try { localStorage.setItem('gs.audio', JSON.stringify(p)); } catch {} }
+
+function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function fillAudioList(m) {
+  const pref = loadAudioPref();
+  let html = '<option value="none">Без звука — легче сигнал</option>';
+  if (m.devices && m.devices.length) {
+    html += '<optgroup label="Устройство вывода — всё, что на нём играет">';
+    for (const d of m.devices) html += `<option value="dev:${esc(d.id)}">${esc(d.name || 'Устройство')}${d.default ? ' (по умолчанию)' : ''}</option>`;
+    html += '</optgroup>';
+  }
+  if (m.apps && m.apps.length) {
+    html += '<optgroup label="Отдельное приложение">';
+    for (const a of m.apps) html += `<option value="app:${a.pid}" data-name="${esc(a.name)}">${esc(a.name)} — ${esc(a.title.slice(0, 50))}</option>`;
+    html += '</optgroup>';
+  }
+  html += '<optgroup label="Проверка"><option value="test">Тестовый сигнал 1 кГц</option></optgroup>';
+  const sel = $('audioSrc');
+  const cur = sel.value;
+  sel.innerHTML = html;
+  // Восстановить выбор: устройство по id, приложение по имени процесса
+  let want = cur !== 'none' ? cur : null;
+  if (!want && pref) {
+    if (pref.v && pref.v.startsWith('app:') && pref.name) {
+      const o = [...sel.options].find(o => o.dataset.name === pref.name);
+      if (o) want = o.value;
+    } else want = pref.v;
+  }
+  if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+  if (m.deviceError) $('audioInfo').innerHTML = `<span class="bad">${esc(m.deviceError)}</span>`;
+}
+
+$('btnAudioRefresh').onclick = () => sendJSON({ t: 'audio-list' });
+$('audioSrc').onchange = () => {
+  const o = $('audioSrc').selectedOptions[0];
+  saveAudioPref({ v: o.value, name: o.dataset.name || null });
+  if (running) applyAudio();
+};
+$('abitrate').onchange = () => { if (aenc) setupAudioEncoder(); };
+
+function applyAudio() {
+  const v = $('audioSrc').value;
+  audioWanted = v;
+  if (v === 'none') { audioOff(); $('audioInfo').textContent = 'Без звука — весь канал отдан картинке.'; return; }
+  $('audioInfo').textContent = 'Подключаю звук…';
+  if (v === 'test') sendJSON({ t: 'audio-select', kind: 'test' });
+  else if (v.startsWith('dev:')) sendJSON({ t: 'audio-select', kind: 'device', id: v.slice(4) });
+  else if (v.startsWith('app:')) sendJSON({ t: 'audio-select', kind: 'app', pid: +v.slice(4) });
+}
+
+function audioOff() {
+  sendJSON({ t: 'audio-select', kind: 'none' });
+  if (aenc && aenc.state !== 'closed') { try { aenc.close(); } catch {} }
+  aenc = null;
+  if (audioOn) sendJSON({ t: 'audio', on: false });
+  audioOn = false;
+  $('meterBar').style.width = '0';
+}
+
+async function onAudioState(m) {
+  if (m.kind === 'none') return;
+  if (!m.ok) {
+    $('audioInfo').innerHTML = `<span class="bad">Звук: ${esc(m.error || 'ошибка')}</span>`;
+    if (aenc) { try { aenc.close(); } catch {} aenc = null; }
+    if (audioOn) sendJSON({ t: 'audio', on: false });
+    audioOn = false;
+    return;
+  }
+  if (!running) { sendJSON({ t: 'audio-select', kind: 'none' }); return; }
+  if (await setupAudioEncoder()) {
+    const o = $('audioSrc').selectedOptions[0];
+    $('audioInfo').innerHTML = `<span class="ok">Передаётся:</span> ${esc(o ? o.textContent : m.desc)}. Клиенту нужно нажать «Включить звук».`;
+  }
+}
+
+async function setupAudioEncoder() {
+  if (!('AudioEncoder' in window)) { $('audioInfo').innerHTML = '<span class="bad">Браузер не умеет кодировать звук. Обновите Edge/Chrome.</span>'; return false; }
+  const cfg = { codec: 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: +$('abitrate').value };
+  try { const r = await AudioEncoder.isConfigSupported(cfg); if (!r.supported) throw new Error('Opus не поддерживается'); }
+  catch (e) { $('audioInfo').innerHTML = `<span class="bad">${esc(e.message)}</span>`; return false; }
+  if (aenc && aenc.state !== 'closed') { try { aenc.close(); } catch {} }
+  aenc = new AudioEncoder({
+    output: (chunk, meta) => {
+      if (meta && meta.decoderConfig && meta.decoderConfig.description) {
+        sendJSON({ t: 'audio', on: true, codec: 'opus', sampleRate: 48000, channels: 2, description: b64(meta.decoderConfig.description) });
+      }
+      if (!ws || ws.readyState !== 1 || ws.bufferedAmount > 8e6) return;
+      const buf = new ArrayBuffer(9 + chunk.byteLength);
+      const dv = new DataView(buf);
+      dv.setUint8(0, 3);
+      dv.setFloat64(1, chunk.timestamp);
+      chunk.copyTo(new Uint8Array(buf, 9));
+      ws.send(buf);
+    },
+    error: e => { $('audioInfo').innerHTML = `<span class="bad">Кодер звука: ${esc(e.message)}</span>`; setTimeout(() => running && audioWanted !== 'none' && setupAudioEncoder(), 500); },
+  });
+  aenc.configure(cfg);
+  audioOn = true;
+  sendJSON({ t: 'audio', on: true, codec: 'opus', sampleRate: 48000, channels: 2 });
+  return true;
+}
+
+function onPCM(buf) {
+  const u = new Uint8Array(buf);
+  if (u[0] !== 2) return;
+  const pcm = new Float32Array(buf.slice(9));
+  for (let i = 0; i < pcm.length; i++) { const a = Math.abs(pcm[i]); if (a > peak) peak = a; }
+  if (!aenc || aenc.state !== 'configured' || paused) return;
+  const frames = pcm.length / 2;
+  try {
+    const ad = new AudioData({ format: 'f32', sampleRate: 48000, numberOfFrames: frames, numberOfChannels: 2, timestamp: audioTs, data: pcm });
+    audioTs += Math.round(frames * 1e6 / 48000);
+    aenc.encode(ad);
+    ad.close();
+  } catch (e) { console.warn(e); }
+}
+
+setInterval(() => {
+  const db = peak > 0 ? 20 * Math.log10(peak) : -90;
+  const w = Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+  const bar = $('meterBar');
+  bar.style.width = (audioOn ? w : 0) + '%';
+  bar.style.background = db > -1 ? 'var(--bad)' : db > -9 ? 'var(--acc)' : 'var(--ok)';
+  peak *= 0.5;
+}, 100);
+
+// ================= Состояние: ссылка, зрители =================
+let netMode = 'internet', lanLinks = [];
+try { const sv = localStorage.getItem('gs.mode'); netMode = sv === 'lan' || sv === 'both' ? sv : 'internet'; } catch {}
+document.querySelectorAll('input[name=mode]').forEach(r => {
+  r.checked = r.value === netMode;
+  r.onchange = () => { if (r.checked) chooseMode(r.value); };
+});
+function chooseMode(m) {
+  if (m === netMode) return;
+  // Предупредить, только если кто-то реально отключится
+  const lose = m === 'lan' ? viewerList.filter(v => !v.lan).length : m === 'internet' ? viewerList.filter(v => v.lan).length : 0;
+  if (lose && !confirm(m === 'lan'
+      ? `Оставить только трансляцию внутри сети? Отключатся смотрящие через интернет: ${lose}.`
+      : `Оставить только трансляцию через интернет? Отключатся телефоны в сети Wi-Fi: ${lose}.`)) {
+    document.querySelectorAll('input[name=mode]').forEach(r => r.checked = r.value === netMode);
+    return;
+  }
+  const profileChanges = (netMode === 'internet') !== (m === 'internet');
+  netMode = m;
+  try { localStorage.setItem('gs.mode', m); } catch {}
+  sendJSON({ t: 'mode', mode: m });
+  showModePanels();
+  if (running && profileChanges) setupEncoder();   // для Wi-Fi нужен профиль H.264, который принимает WebRTC
+}
+function showModePanels() {
+  $('netPanel').style.display = netMode === 'lan' ? 'none' : '';
+  $('lanPanel').style.display = netMode === 'internet' ? 'none' : '';
+  $('netPanel').querySelector('h2').textContent = netMode === 'both' ? 'Ссылка через интернет — для удалённых' : 'Ссылка для клиента';
+  $('lanPanel').querySelector('h2').textContent = netMode === 'both' ? 'Ссылка в Wi-Fi — для тех, кто рядом' : 'Ссылка в сети Wi-Fi';
+}
+showModePanels();
+
+function lanUrl() { return lanLinks[Math.max(0, $('lanIp').selectedIndex)] || ''; }
+function showLanLink() {
+  const u = lanUrl();
+  $('lanLink').value = u;
+  $('btnLanCopy').disabled = !u;
+  $('qrBox').style.display = u ? '' : 'none';
+  if (u) {
+    const src = `/api/qr?key=${KEY}&text=${encodeURIComponent(u)}`;
+    if ($('qr').dataset.u !== u) { $('qr').src = src; $('qr').dataset.u = u; $('qrBigImg').src = src; $('qrBigText').textContent = u; }
+  }
+}
+$('lanIp').onchange = () => { try { localStorage.setItem('gs.lanIp', $('lanIp').value); } catch {} showLanLink(); };
+$('qr').onclick = () => { $('qrBig').style.display = 'flex'; };
+$('qrBig').onclick = () => { $('qrBig').style.display = 'none'; };
+$('btnLanCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('lanLink').value); } catch { $('lanLink').select(); document.execCommand('copy'); }
+  $('btnLanCopy').textContent = 'Скопировано';
+  setTimeout(() => $('btnLanCopy').textContent = 'Копировать', 1500);
+};
+
+function renderLan(s) {
+  const links = s.lanLinks || [];
+  if (links.join() !== lanLinks.join()) {
+    lanLinks = links;
+    let saved = null; try { saved = localStorage.getItem('gs.lanIp'); } catch {}
+    $('lanIp').innerHTML = links.map(u => { const ip = u.split('//')[1].split(':')[0]; return `<option value="${ip}">${ip}</option>`; }).join('');
+    if (saved && [...$('lanIp').options].some(o => o.value === saved)) $('lanIp').value = saved;
+    $('lanIpRow').style.display = links.length > 1 ? '' : 'none';
+  }
+  showLanLink();
+  if (s.mode !== 'internet' && !links.length) {
+    $('lanInfo').innerHTML = s.lanError ? `<span class="bad">${esc(s.lanError)}</span>`
+      : '<span class="bad">Компьютер не подключён к локальной сети (Wi-Fi или кабель).</span>';
+  } else {
+    $('lanInfo').innerHTML = 'Видео идёт напрямую по Wi-Fi, без интернета: задержка около 0,1 с. Телефоны должны быть в той же сети, что и компьютер.' +
+      '<br>При первом включении Windows спросит разрешение для GradeStream — нажми «Разрешить».' +
+      (links.length > 1 ? '<br>Адресов несколько — выбери тот, что относится к Wi-Fi, к которой подключены телефоны.' : '');
+  }
+  $('lanWarn').textContent = s.lanWarn || '';
+}
+
+function renderState(s) {
+  if (s.mode && s.mode !== netMode) {   // программа помнит режим с прошлого запуска
+    netMode = s.mode;
+    try { localStorage.setItem('gs.mode', netMode); } catch {}
+    document.querySelectorAll('input[name=mode]').forEach(r => r.checked = r.value === netMode);
+    showModePanels();
+    if (running) setupEncoder();
+  }
+  renderLan(s);
+  if (s.link) {
+    $('link').value = s.link; $('btnCopy').disabled = false;
+    $('tunnelInfo').innerHTML = '<span class="ok">Ссылка работает.</span> Действует, пока открыта программа. Отправь её клиенту в WhatsApp.';
+  } else {
+    $('link').value = ''; $('btnCopy').disabled = true;
+    $('tunnelInfo').innerHTML = s.tunnel === 'starting' ? 'Поднимаю защищённый туннель Cloudflare… (обычно 5–15 секунд)'
+      : s.tunnel === 'off' ? 'Туннель выключен.'
+      : `<span class="bad">${s.tunnelError || 'Туннель недоступен'}</span>`;
+  }
+  viewerList = s.viewers || [];
+  $('vcount').textContent = viewerList.length;
+  if (!viewerList.length) { $('viewers').className = 'muted'; $('viewers').textContent = 'пока никого'; return; }
+  $('viewers').className = '';
+  $('viewers').innerHTML = viewerList.map(v => {
+    let st = running ? `${(v.kbps / 1000).toFixed(1)} Мбит/с` : 'ждёт начала трансляции';
+    if (v.lan) st = (v.rtc ? 'Wi-Fi напрямую · ' : '<span class="warn">соединяется по Wi-Fi…</span> · ') + st;
+    else if (netMode === 'both') st = 'через интернет · ' + st;
+    if (running && !v.lan && v.drops > 0 && v.queue > 20) st += ' · <span class="warn">интернет клиента не успевает — снизь битрейт</span>';
+    if (running && audioOn && !v.lan) st += v.audio ? ' · звук включён' + (v.pcm ? ' (облегчённый)' : '') : ' · звук не включил';
+    return `<div class="viewer"><b>${v.dev}</b> · ${st}</div>`;
+  }).join('');
+}
+
+// ================= Метки клиента =================
+let beepCtx;
+function beep() {
+  try {
+    beepCtx = beepCtx || new AudioContext();
+    const o = beepCtx.createOscillator(), g = beepCtx.createGain();
+    o.frequency.value = 880; g.gain.value = 0.08;
+    o.connect(g); g.connect(beepCtx.destination); o.start(); o.stop(beepCtx.currentTime + 0.12);
+  } catch {}
+}
+// ---------- Метки поверх монитора с Clean Feed ----------
+let surface = 'monitor', monitors = [];
+function monKey() { return `gs.mon.${srcW}x${srcH}`; }
+
+function fillMonitors(list) {
+  monitors = list;
+  const sel = $('ovMon');
+  if (surface !== 'monitor') {
+    sel.innerHTML = '<option value="-1">— захвачен не весь экран —</option>';
+    $('ovInfo').innerHTML = '<span class="warn">Метки поверх экрана работают, когда выбран «Весь экран». Сейчас захвачено окно — метки видны только в превью.</span>';
+    return;
+  }
+  sel.innerHTML = list.map(m => `<option value="${m.index}">Монитор ${m.index + 1}: ${m.w}×${m.h}${m.primary ? ' (основной)' : ''}${m.w === srcW && m.h === srcH ? ' — совпадает с захватом' : ''}</option>`).join('');
+  const match = list.filter(m => m.w === srcW && m.h === srcH);
+  let saved = null; try { saved = localStorage.getItem(monKey()); } catch {}
+  if (saved !== null && match.some(m => String(m.index) === saved)) sel.value = saved;
+  else if (match.length === 1) sel.value = match[0].index;
+  else if (match.length > 1) { sel.value = match.find(m => !m.primary)?.index ?? match[0].index; $('ovInfo').innerHTML = '<span class="warn">Несколько мониторов с таким разрешением — проверь, что выбран тот, где Clean Feed.</span>'; return; }
+  else { $('ovInfo').innerHTML = '<span class="warn">Не нашёл монитор с разрешением захвата — выбери вручную.</span>'; return; }
+  $('ovInfo').textContent = 'Метки видишь только ты — Windows не пускает это окно в захват, клиенту они не уходят.';
+}
+$('ovMon').onchange = () => { try { localStorage.setItem(monKey(), $('ovMon').value); } catch {} };
+$('btnClearMarks').onclick = () => { sendJSON({ t: 'overlay-clear' }); document.querySelectorAll('.stage .mark').forEach(e => e.remove()); };
+try { $('ovOn').checked = localStorage.getItem('gs.ovOn') !== '0'; } catch {}
+$('ovOn').onchange = () => { try { localStorage.setItem('gs.ovOn', $('ovOn').checked ? '1' : '0'); } catch {} if (!$('ovOn').checked) sendJSON({ t: 'overlay-clear' }); };
+
+// Точка клиента (доля кадра 1920×1080) → пиксель захваченного монитора
+function toSource(x, y) {
+  if (!rect) return null;
+  const ox = x * OUT_W, oy = y * OUT_H;
+  const sx = rect.sx + (ox - rect.dx) * rect.sw / rect.dw;
+  const sy = rect.sy + (oy - rect.dy) * rect.sh / rect.dh;
+  if (sx < 0 || sy < 0 || sx > srcW || sy > srcH) return null;   // тап по чёрному полю
+  return { x: Math.round(sx), y: Math.round(sy) };
+}
+
+function showMark(m) {
+  beep();
+  const x = Math.min(1, Math.max(0, +m.x || 0)), y = Math.min(1, Math.max(0, +m.y || 0));
+  if ($('ovOn').checked && surface === 'monitor' && running) {
+    const p = toSource(x, y), mon = +$('ovMon').value;
+    if (p && mon >= 0) sendJSON({ t: 'overlay-mark', monitor: mon, x: p.x, y: p.y, text: m.text || '', ttl: 20 });
+  }
+  const el = document.createElement('div');
+  el.className = 'mark';
+  el.style.left = (x * 100) + '%'; el.style.top = (y * 100) + '%';
+  if (m.text) { const s = document.createElement('span'); s.textContent = m.text; el.appendChild(s); }
+  $('stage').appendChild(el);
+  setTimeout(() => el.remove(), 20000);
+  const list = $('marks');
+  if (list.classList.contains('muted')) { list.classList.remove('muted'); list.innerHTML = ''; }
+  const row = document.createElement('div');
+  const time = new Date().toLocaleTimeString('ru-RU');
+  row.textContent = `${time} · ${m.dev || ''} · точка ${Math.round(x * OUT_W)}, ${Math.round(y * OUT_H)}` + (m.text ? ` — ${m.text}` : '');
+  list.prepend(row);
+  if ($('snapOn').checked && running) {
+    saveSnapshot(m, x, y).then(j => {
+      const a = document.createElement('span');
+      a.className = 'ok'; a.textContent = `  · снимок №${j.n} сохранён`;
+      row.appendChild(a);
+      $('btnSummary').disabled = false;
+      $('snapPath').textContent = j.dir;
+    }).catch(e => {
+      const a = document.createElement('span');
+      a.className = 'bad'; a.textContent = '  · снимок не сохранён: ' + e.message;
+      row.appendChild(a);
+    });
+  }
+}
+
+// ---------- Превью во весь экран ----------
+function toggleFS() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else $('stage').requestFullscreen().catch(() => {});
+}
+$('btnFS').onclick = e => { e.stopPropagation(); toggleFS(); };
+$('stage').addEventListener('dblclick', toggleFS);
+document.addEventListener('fullscreenchange', () => { $('btnFS').textContent = document.fullscreenElement ? 'Выйти (Esc)' : 'Во весь экран'; });
+
+$('btnFolder').onclick = () => openFolder();
+
+// ---------- Папка для скриншотов ----------
+function showSnapFolder(j) {
+  if (!j.ok) { alert('Папка не выбрана: ' + j.error); return; }
+  const sep = j.base.includes('\\') ? '\\' : '/';
+  $('snapPath').textContent = j.current || (j.subfolder ? j.base + sep + 'Сессия <дата время>' : j.base);
+  $('snapSub').checked = j.subfolder;
+  $('btnResetFolder').style.display = j.custom ? '' : 'none';
+  if (!j.current) $('btnSummary').disabled = true;
+}
+function snapFolder(q) { return fetch(`/api/snap-folder?key=${KEY}` + (q ? '&' + q : '')).then(r => r.json()).then(showSnapFolder).catch(() => {}); }
+$('btnChoose').onclick = async () => {
+  $('btnChoose').disabled = true; $('btnChoose').textContent = 'Выбор папки…';
+  await snapFolder('action=choose');
+  $('btnChoose').disabled = false; $('btnChoose').textContent = 'Выбрать папку…';
+};
+$('btnResetFolder').onclick = () => snapFolder('action=reset');
+$('snapSub').onchange = () => snapFolder('action=subfolder&on=' + ($('snapSub').checked ? 1 : 0));
+snapFolder();
+$('btnSummary').onclick = () => openFolder('summary');
+try { $('snapOn').checked = localStorage.getItem('gs.snapOn') !== '0'; } catch {}
+$('snapOn').onchange = () => {
+  try { localStorage.setItem('gs.snapOn', $('snapOn').checked ? '1' : '0'); } catch {}
+  if (!$('snapOn').checked) while (frameHistory.length) frameHistory.shift().bmp.close();
+};
+
+$('btnCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('link').value); } catch { $('link').select(); document.execCommand('copy'); }
+  $('btnCopy').textContent = 'Скопировано';
+  setTimeout(() => $('btnCopy').textContent = 'Копировать', 1500);
+};
+</script>
+</body>
+</html>

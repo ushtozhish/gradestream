@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>Просмотр цветокоррекции</title>
+<style>
+  html, body { margin:0; height:100%; background:#000; color:#ddd; overflow:hidden; touch-action:manipulation;
+               font:15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select:none; user-select:none; }
+  canvas, #lv { position:fixed; inset:0; width:100%; height:100%; object-fit:contain; background:#000; }
+  #lv { display:none; }
+  #status { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:28px; color:#999; pointer-events:none; }
+  #bar { position:fixed; left:0; right:0; bottom:0; padding:10px 12px calc(12px + env(safe-area-inset-bottom));
+         display:flex; gap:8px; justify-content:center; flex-wrap:wrap; background:linear-gradient(transparent, rgba(0,0,0,.75)); transition:opacity .3s; }
+  #bar.hidden { opacity:0; pointer-events:none; }
+  button { background:rgba(40,40,40,.88); color:#eee; border:1px solid #555; border-radius:20px; padding:9px 16px; font:inherit; }
+  button.on { background:#e0a040; color:#111; border-color:#e0a040; }
+  #info { position:fixed; top:calc(8px + env(safe-area-inset-top)); left:10px; font-size:11px; color:#888; display:none; background:rgba(0,0,0,.5); padding:2px 6px; border-radius:4px; }
+  #pause { position:fixed; top:calc(8px + env(safe-area-inset-top)); right:10px; font-size:12px; color:#111; background:#e0a040; padding:3px 9px; border-radius:10px; display:none; }
+  #hint { position:fixed; top:calc(40px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); background:rgba(224,160,64,.95); color:#111; padding:6px 12px; border-radius:14px; font-size:13px; display:none; white-space:nowrap; }
+  .ping { position:fixed; width:28px; height:28px; margin:-14px 0 0 -14px; border:2px solid #e0a040; border-radius:50%; pointer-events:none; animation:fade 1.5s forwards; }
+  @keyframes fade { from { transform:scale(.5); opacity:1 } to { transform:scale(1.6); opacity:0 } }
+  #note { position:fixed; left:50%; bottom:calc(70px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:rgba(0,0,0,.75); color:#ccc;
+          padding:6px 12px; border-radius:12px; font-size:13px; display:none; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<video id="lv" muted autoplay playsinline disablepictureinpicture></video>
+<div id="status">Подключаюсь…</div>
+<div id="hint">Коснитесь места на кадре</div>
+<div id="pause">Пауза</div>
+<div id="info"></div>
+<div id="note"></div>
+<div id="bar">
+  <button id="btnSound" style="display:none">Включить звук</button>
+  <button id="btnMark">Отметить точку</button>
+  <button id="btnFull" style="display:none">На весь экран</button>
+  <button id="btnInfo">i</button>
+  <button id="btnHide">Скрыть</button>
+</div>
+
+<script>
+const ROOM = '__ROOM__';
+const LAN = __LAN__;   // открыто по ссылке внутри сети: видео приходит по WebRTC напрямую по Wi-Fi
+const $ = id => document.getElementById(id);
+const canvas = $('c');
+const ctx = canvas.getContext('2d', { alpha: false });
+ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1920, 1080);
+
+let shownTs = 0;
+let ws = null, decoder = null, cfg = null, waitKey = true, live = false;
+let gotFrame = false, frames = 0, bytes = 0, markMode = false, retry = 0;
+
+function status(t) { $('status').textContent = t || ''; $('status').style.display = t ? 'flex' : 'none'; }
+function note(t) { $('note').textContent = t; $('note').style.display = 'block'; clearTimeout(note.t); note.t = setTimeout(() => $('note').style.display = 'none', 2500); }
+
+if (LAN) {
+  canvas.style.display = 'none';
+  $('lv').style.display = 'block';
+  if (!('RTCPeerConnection' in window)) status('Этот браузер не умеет принимать видео по сети. Откройте ссылку в Safari (iPhone) или Chrome (Android).');
+  else connect();
+} else if (!('VideoDecoder' in window)) {
+  status('Этот браузер слишком старый для просмотра. На iPhone обновите iOS до 16.4 или новее и откройте ссылку в Safari. На Android — в Chrome.');
+} else {
+  connect();
+}
+
+function connect() {
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/view?room=${ROOM}`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => { retry = 0; };
+  ws.onclose = () => {
+    status(gotFrame ? '' : 'Нет связи, переподключаюсь…');
+    if (gotFrame) note('Связь прервалась, переподключаюсь…');
+    setTimeout(connect, Math.min(5000, 500 * ++retry));
+  };
+  ws.onmessage = e => {
+    if (typeof e.data === 'string') return onText(JSON.parse(e.data));
+    const t = new Uint8Array(e.data, 0, 1)[0];
+    if (t <= 1) onFrame(e.data);
+    else if (t === 3) onOpus(e.data);
+    else if (t === 4) onPCM(e.data);
+  };
+}
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+
+function onText(m) {
+  if (m.t === 'hello') {
+    live = m.live; if (!live) status('Трансляция ещё не началась. Ожидайте…');
+    if (LAN) { startRTC(); return; }
+    sendCaps();
+    if (soundOn) send({ t: 'audio-want', on: true });
+  }
+  else if (m.t === 'rtc-offer') onRtcOffer(m);
+  else if (m.t === 'rtc-ice') { if (pc && m.c) pc.addIceCandidate(m.c).catch(() => {}); }
+  else if (m.t === 'rtc-error') status('Не удалось начать показ: ' + m.error);
+  else if (m.t === 'audio') { if (LAN) $('btnSound').style.display = m.on ? '' : 'none'; else onAudioConfig(m); }
+  else if (m.t === 'config') { if (!LAN) setupDecoder(m); }
+  else if (m.t === 'live') {
+    live = m.on;
+    if (LAN) { $('lv').style.visibility = live ? 'visible' : 'hidden'; if (live) { $('lv').play().catch(() => {}); if (!gotFrame) status('Загружаю картинку…'); } }
+    if (!live) { if (!LAN) onAudioConfig({ on: false }); status('Трансляция остановлена'); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1920, 1080); }
+  }
+  else if (m.t === 'pause') $('pause').style.display = m.on ? 'block' : 'none';
+}
+
+// ---------- Внутри сети: WebRTC ----------
+let pc = null, rtcRetry = null, lagMs = 150, lastBytesRx = 0, rxFps = 0, rxMbps = 0;
+const lv = $('lv');
+function startRTC() {
+  clearTimeout(rtcRetry);
+  if (pc) { try { pc.close(); } catch {} pc = null; }
+  if (!live) status('Трансляция ещё не началась. Ожидайте…'); else status('Соединяюсь по Wi-Fi…');
+  send({ t: 'rtc-start' });
+}
+async function onRtcOffer(m) {
+  if (pc) { try { pc.close(); } catch {} }
+  const p = pc = new RTCPeerConnection({ iceServers: [] });   // только локальная сеть
+  const stream = new MediaStream();
+  p.ontrack = e => {
+    stream.addTrack(e.track);
+    try { e.receiver.playoutDelayHint = 0; } catch {}
+    if (lv.srcObject !== stream) lv.srcObject = stream;
+    lv.play().catch(() => {});
+  };
+  p.onicecandidate = e => { if (e.candidate) send({ t: 'rtc-ice', c: e.candidate.toJSON() }); };
+  p.onconnectionstatechange = () => {
+    if (p !== pc) return;
+    const st = p.connectionState;
+    if (st === 'connected') { if (!live) status('Трансляция ещё не началась. Ожидайте…'); }
+    else if (st === 'failed') {
+      status('Не получилось соединиться по Wi-Fi. Проверьте, что телефон в той же сети, что и компьютер (не гостевая сеть), и что на компьютере GradeStream разрешён в брандмауэре. Пробую снова…');
+      rtcRetry = setTimeout(startRTC, 4000);
+    } else if (st === 'disconnected') note('Связь по Wi-Fi прерывается…');
+  };
+  try {
+    await p.setRemoteDescription({ type: 'offer', sdp: m.sdp });
+    const ans = await p.createAnswer();
+    // Попросить стерео: иначе Chrome сводит звук Opus в моно
+    const opt = (ans.sdp.match(/a=rtpmap:(\d+) opus\/48000/i) || [])[1];
+    if (opt) ans.sdp = ans.sdp.replace(new RegExp('(a=fmtp:' + opt + ' [^\\r\\n]*)'), (m0) => /stereo=1/.test(m0) ? m0 : m0 + ';stereo=1;sprop-stereo=1');
+    await p.setLocalDescription(ans);
+    send({ t: 'rtc-answer', sdp: p.localDescription.sdp });
+  } catch (e) { status('Ошибка соединения: ' + e.message); }
+}
+lv.addEventListener('playing', () => { if (live) { gotFrame = true; status(''); } });
+lv.addEventListener('resize', () => { if (live && lv.videoWidth) { gotFrame = true; status(''); } });
+// Задержка показа у телефона — чтобы скриншот метки был именно того кадра, который здесь виден
+setInterval(async () => {
+  if (!LAN || !pc) return;
+  try {
+    const rep = await pc.getStats();
+    let jb = null, rtt = 0;
+    rep.forEach(r => {
+      if (r.type === 'inbound-rtp' && r.kind === 'video') {
+        if (r.jitterBufferEmittedCount) jb = r.jitterBufferDelay / r.jitterBufferEmittedCount * 1000;
+        rxFps = r.framesPerSecond || 0;
+        if (r.bytesReceived != null) { rxMbps = (r.bytesReceived - lastBytesRx) * 8 / 1e6; lastBytesRx = r.bytesReceived; }
+      }
+      if (r.type === 'candidate-pair' && r.nominated && r.currentRoundTripTime != null) rtt = r.currentRoundTripTime * 1000;
+    });
+    if (jb != null) lagMs = Math.round(jb + rtt / 2 + 30);
+  } catch {}
+}, 1000);
+
+function unb64(s) { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+
+async function setupDecoder(m) {
+  const c = { codec: m.codec, codedWidth: m.w, codedHeight: m.h, optimizeForLatency: true };
+  if (m.description) c.description = unb64(m.description);
+  if (m.colorSpace) c.colorSpace = m.colorSpace;
+  try {
+    const s = await VideoDecoder.isConfigSupported(c);
+    if (!s.supported) { delete c.colorSpace; const s2 = await VideoDecoder.isConfigSupported(c); if (!s2.supported) { status('Устройство не может декодировать это видео (H.264 ' + m.codec + ').'); return; } }
+  } catch {}
+  cfg = c;
+  resetDecoder();
+  if (!gotFrame) status('Загружаю картинку…');
+}
+
+function resetDecoder() {
+  if (decoder && decoder.state !== 'closed') { try { decoder.close(); } catch {} }
+  decoder = new VideoDecoder({
+    output: f => {
+      ctx.drawImage(f, 0, 0, 1920, 1080);
+      shownTs = f.timestamp;   // какой кадр сейчас на экране — для скриншота метки
+      f.close();
+      frames++;
+      if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
+    },
+    error: e => { console.warn(e); setTimeout(() => { if (cfg) { resetDecoder(); askKey(); } }, 100); },
+  });
+  decoder.configure(cfg);
+  waitKey = true;
+  askKey();
+}
+
+let lastAsk = 0;
+function askKey() { const n = performance.now(); if (n - lastAsk > 800) { lastAsk = n; send({ t: 'kf' }); } }
+
+function onFrame(buf) {
+  bytes += buf.byteLength;
+  if (!decoder || decoder.state !== 'configured') return;
+  const dv = new DataView(buf);
+  const isKey = dv.getUint8(0) === 1;
+  const ts = dv.getFloat64(1);
+  if (waitKey && !isKey) { askKey(); return; }
+  // Декодер отстаёт (слабый телефон) — ждём следующий ключевой кадр, чтобы не копить задержку
+  if (!isKey && decoder.decodeQueueSize > 6) { waitKey = true; askKey(); return; }
+  try {
+    decoder.decode(new EncodedVideoChunk({ type: isKey ? 'key' : 'delta', timestamp: ts, data: new Uint8Array(buf, 9) }));
+    if (isKey) waitKey = false;
+  } catch (e) { console.warn(e); waitKey = true; askKey(); }
+}
+
+// ---------- Звук ----------
+let actx = null, soundOn = false, acfg = null, adec = null, nextTime = 0, opusOK = null;
+
+async function sendCaps() {
+  if (opusOK === null) {
+    opusOK = false;
+    if ('AudioDecoder' in window) {
+      try { opusOK = (await AudioDecoder.isConfigSupported({ codec: 'opus', sampleRate: 48000, numberOfChannels: 2 })).supported; } catch {}
+    }
+  }
+  send({ t: 'caps', opus: opusOK });
+}
+
+function onAudioConfig(m) {
+  acfg = m.on ? m : null;
+  $('btnSound').style.display = acfg ? '' : 'none';
+  if (!acfg) { closeDecoder(); return; }
+  if (soundOn && opusOK) setupAudioDecoder();
+}
+
+function closeDecoder() { if (adec && adec.state !== 'closed') { try { adec.close(); } catch {} } adec = null; }
+
+function setupAudioDecoder() {
+  closeDecoder();
+  if (!acfg || !opusOK) return;
+  const c = { codec: 'opus', sampleRate: 48000, numberOfChannels: 2 };
+  if (acfg.description) c.description = unb64(acfg.description);
+  adec = new AudioDecoder({
+    output: ad => {
+      const n = ad.numberOfFrames, ch = Math.min(2, ad.numberOfChannels);
+      const buf = actx.createBuffer(2, n, ad.sampleRate);
+      for (let i = 0; i < 2; i++) {
+        const arr = new Float32Array(n);
+        try { ad.copyTo(arr, { planeIndex: Math.min(i, ch - 1), format: 'f32-planar' }); } catch { }
+        buf.copyToChannel(arr, i);
+      }
+      ad.close();
+      schedule(buf);
+    },
+    error: e => { console.warn(e); setTimeout(setupAudioDecoder, 300); },
+  });
+  try { adec.configure(c); } catch (e) { console.warn(e); }
+}
+
+// Небольшой буфер ~150 мс: звук без щелчков и почти без задержки
+function schedule(buf) {
+  if (!actx || !soundOn) return;
+  const now = actx.currentTime;
+  if (nextTime < now + 0.03) nextTime = now + 0.15;
+  if (nextTime > now + 0.8) return;            // сильно отстали — пропускаем, чтобы догнать
+  const src = actx.createBufferSource();
+  src.buffer = buf;
+  src.connect(actx.destination);
+  src.start(nextTime);
+  nextTime += buf.duration;
+}
+
+function onOpus(buf) {
+  if (!soundOn || !adec || adec.state !== 'configured') return;
+  const dv = new DataView(buf);
+  try { adec.decode(new EncodedAudioChunk({ type: 'key', timestamp: dv.getFloat64(1), data: new Uint8Array(buf, 9) })); } catch (e) { console.warn(e); }
+}
+
+// Облегчённый звук для устройств без декодера Opus: int16, 24 кГц, стерео
+function onPCM(buf) {
+  if (!soundOn || !actx) return;
+  const s16 = new Int16Array(buf.slice(9));
+  const n = s16.length / 2;
+  const b = actx.createBuffer(2, n, 24000);
+  const L = b.getChannelData(0), R = b.getChannelData(1);
+  for (let i = 0; i < n; i++) { L[i] = s16[2 * i] / 32768; R[i] = s16[2 * i + 1] / 32768; }
+  schedule(b);
+}
+
+$('btnSound').onclick = async e => {
+  e.stopPropagation();
+  if (LAN) {   // звук уже идёт вместе с видео — просто включаем его у плеера
+    soundOn = !soundOn;
+    lv.muted = !soundOn;
+    lv.play().catch(() => {});
+    if (soundOn) note('Звук включён. Если тихо — снимите iPhone с беззвучного режима');
+    $('btnSound').textContent = soundOn ? 'Звук: вкл' : 'Включить звук';
+    $('btnSound').classList.toggle('on', soundOn);
+    return;
+  }
+  soundOn = !soundOn;
+  if (soundOn) {
+    // На iPhone звук можно включить только по нажатию
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    try { await actx.resume(); } catch {}
+    const unlock = actx.createBuffer(1, 1, 22050), s = actx.createBufferSource();
+    s.buffer = unlock; s.connect(actx.destination); s.start(0);
+    nextTime = 0;
+    if (opusOK === null) await sendCaps();
+    if (opusOK) setupAudioDecoder();
+    send({ t: 'audio-want', on: true });
+    note('Звук включён. Если тихо — снимите iPhone с беззвучного режима');
+  } else {
+    send({ t: 'audio-want', on: false });
+    closeDecoder();
+  }
+  $('btnSound').textContent = soundOn ? 'Звук: вкл' : 'Включить звук';
+  $('btnSound').classList.toggle('on', soundOn);
+};
+
+// ---------- Метки ----------
+$('btnMark').onclick = e => {
+  e.stopPropagation();
+  markMode = !markMode;
+  $('btnMark').classList.toggle('on', markMode);
+  $('hint').style.display = markMode ? 'block' : 'none';
+};
+function onTap(e) {
+  if (!markMode) { $('bar').classList.toggle('hidden'); return; }
+  const r = (LAN ? lv : canvas).getBoundingClientRect();
+  const scale = Math.min(r.width / 1920, r.height / 1080);
+  const dw = 1920 * scale, dh = 1080 * scale;
+  const ox = r.left + (r.width - dw) / 2, oy = r.top + (r.height - dh) / 2;
+  const x = (e.clientX - ox) / dw, y = (e.clientY - oy) / dh;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return;
+  const p = document.createElement('div');
+  p.className = 'ping'; p.style.left = e.clientX + 'px'; p.style.top = e.clientY + 'px';
+  document.body.appendChild(p); setTimeout(() => p.remove(), 1600);
+  const text = prompt('Комментарий к точке (можно оставить пустым):');
+  if (text !== null) { send(LAN ? { t: 'mark', x, y, text, lag: lagMs } : { t: 'mark', x, y, text, ts: shownTs }); note('Метка отправлена'); }
+  markMode = false; $('btnMark').classList.remove('on'); $('hint').style.display = 'none';
+}
+canvas.addEventListener('click', onTap);
+lv.addEventListener('click', onTap);
+
+// ---------- Интерфейс ----------
+$('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note('Коснитесь экрана, чтобы вернуть кнопки'); };
+$('btnInfo').onclick = e => { e.stopPropagation(); const i = $('info'); i.style.display = i.style.display === 'block' ? 'none' : 'block'; };
+// ---------- Во весь экран ----------
+// Android, iPad, компьютер — полноэкранный режим страницы (метки остаются доступны).
+// iPhone не разрешает развернуть страницу, поэтому картинка дублируется в видеоэлемент
+// и открывается в системном полноэкранном плеере iOS (для метки — выйти из него).
+const fsEl = document.documentElement;
+const pageFS = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
+let fsVideo = null;
+function ensureFsVideo() {
+  if (pageFS || fsVideo || !canvas.captureStream) return;
+  fsVideo = document.createElement('video');
+  fsVideo.muted = true; fsVideo.autoplay = true; fsVideo.playsInline = true;
+  fsVideo.setAttribute('playsinline', ''); fsVideo.setAttribute('muted', '');
+  fsVideo.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none';
+  fsVideo.srcObject = canvas.captureStream(30);
+  document.body.appendChild(fsVideo);
+  fsVideo.play().catch(() => {});
+}
+$('btnFull').style.display = '';
+$('btnFull').onclick = e => {
+  e.stopPropagation();
+  if (pageFS) {
+    if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    const p = (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl);
+    if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch {} }).catch(() => {});
+    $('bar').classList.add('hidden');
+    note('Коснитесь экрана, чтобы вернуть кнопки');
+    return;
+  }
+  if (!LAN) ensureFsVideo();
+  const fv = LAN ? lv : fsVideo;
+  if (fv && fv.webkitEnterFullscreen) {
+    fv.play().catch(() => {});
+    try { fv.webkitEnterFullscreen(); } catch { note('Поверните телефон горизонтально'); }
+  } else note('Поверните телефон горизонтально — картинка займёт весь экран');
+};
+document.addEventListener('fullscreenchange', () => { $('btnFull').textContent = document.fullscreenElement ? 'Свернуть' : 'На весь экран'; });
+
+setInterval(() => {
+  $('info').textContent = LAN
+    ? `Wi-Fi напрямую · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} к/с · ${rxMbps.toFixed(1)} Мбит/с · задержка ~${lagMs} мс`
+    : `1920×1080 · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`;
+  frames = 0; bytes = 0;
+}, 1000);
+
+async function keepAwake() { try { await navigator.wakeLock?.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepAwake(); if (LAN) lv.play().catch(() => {}); if (cfg) { waitKey = true; askKey(); } } });
+keepAwake();
+</script>
+</body>
+</html>
