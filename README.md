@@ -1,29 +1,187 @@
-# GradeStream
+<p align="center"><img src="docs/img/icon.png" width="80" alt=""></p>
 
-**Stream a DaVinci Resolve Clean Feed to your client's phone via a link — nothing to install on the viewer's side.**
-A tool for colorists and editors: show a grade during a remote session or to everyone in the room, and get feedback as markers placed directly on the frame.
+<h1 align="center">GradeStream</h1>
 
-Windows 10/11 · free · MIT · [download the installer](https://github.com/ushtozhish/gradestream/releases/latest)
+<p align="center"><b>Stream a DaVinci Resolve Clean Feed to your client's phone via a link — nothing to install on the viewer's side.</b><br>
+For colorists and editors: show a grade during a remote session or to everyone in the room, and get feedback as markers placed right on the frame.</p>
 
-<img src="docs/panel.png" width="360" align="right" alt="GradeStream panel: mode selector, internet link and Wi-Fi QR code">
+<p align="center">Windows 10/11 · free · open source (MIT) · English / Русский<br>
+<a href="https://github.com/ushtozhish/gradestream/releases/latest"><b>⬇ Download the installer</b></a></p>
 
-> The interface is in English and Russian: the app follows the Windows language (switch with the RU/EN button), and the viewer page follows the language of the client's phone.
+![GradeStream control window: live preview with client markers, internet and Wi-Fi links with a QR code](docs/img/control-window.png)
 
-## Features
+<p align="center"><img src="docs/img/client-phone.png" width="760" alt="What the client sees on an iPhone: the picture with Turn sound on, Mark a point, Fullscreen and Hide buttons"><br>
+<sub>What the client sees — just a link opened in Safari or Chrome.</sub></p>
 
-- **A link for the client.** The client opens it on a phone — for example, during a WhatsApp call — and sees your Clean Feed monitor. No app, no sign-up: Safari on iPhone, Chrome on Android.
-- **Three modes**:
-  - **Internet** — remote client, link via Cloudflare Tunnel;
-  - **Wi-Fi** — everyone in the same room; video goes directly over the local network, no internet needed, link and QR code shown on screen;
-  - **Both** — both links at once.
-- **Always 1920×1080 out.** If the monitor isn't 1080p, the app offers a downscale (4K, 1440p), a 1:1 center crop for checking grain, a crop of the extra margins (1920×1200, ultrawide) or a fit with letterboxing. The choice is remembered per resolution.
-- **Client markers.** The client taps "Mark a point", taps the frame and types a comment. On your side:
-  - the marker appears on top of your Clean Feed monitor (it is not part of the stream);
-  - a PNG of the exact frame the client was looking at (latency-compensated) is saved with the marker and the comment;
-  - a `comments.html` summary with "Done" checkboxes and a `comments.txt` list are kept (in Russian Windows: `комментарии.html` / `.txt`). You choose the folder.
-- **Audio, optional:** no audio (all bandwidth goes to the picture), a whole Windows output device, or a single application (e.g. only Resolve).
-- **Quality:** 4–24 Mbit/s, 12/24/25/30/50/60 fps, pause (the client keeps the last frame).
-- **Conveniences:** fullscreen for the client and for your preview, a tray icon (show window, stop, exit), its own taskbar icon, English and Russian interface.
+> Screenshots are taken from the real interface on a test bench. Links, audio devices, monitors and the viewer list in them are sample data; the picture is an original synthetic frame.
+
+## Contents
+
+- [Why GradeStream](#why-gradestream)
+- [Tour of the app](#tour-of-the-app)
+  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. Always 1920×1080](#4-always-19201080) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Client markers](#8-client-markers) · [9. Marker screenshots and the comment summary](#9-marker-screenshots-and-the-comment-summary) · [10. Viewers](#10-viewers) · [11. Tray icon, language, closing](#11-tray-icon-language-closing)
+- [Settings reference](#settings-reference)
+- [How it works](#how-it-works) · [Technical specification](#technical-specification) · [Color: what to trust](#color-what-to-trust-and-what-not-to)
+- [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations)
+
+## Why GradeStream
+
+- **Zero friction for the client.** One link, opened on a phone during a WhatsApp/Zoom call. No app, no account, no plug-ins.
+- **Built for grading reviews.** Clean Feed monitor in, a fixed 1920×1080 picture out, color-tagged so the decoder reconstructs the RGB values Resolve outputs ([measured](#color-what-to-trust-and-what-not-to): mean ΔE2000 0.22).
+- **Feedback lands on the frame.** The client taps the image and types a comment; you see it on top of your Clean Feed monitor, and a screenshot of the exact frame they meant is saved with the note.
+- **Remote or in the room.** Over the internet via Cloudflare Tunnel, or straight over Wi-Fi with no internet at all — or both at once.
+
+## Tour of the app
+
+### 1. Control window
+
+The control window opens when you start GradeStream. The large preview shows **exactly what the client receives** — the 1920×1080 frame after cropping/scaling. Client markers appear on it too.
+
+- **Choose screen** — pick the monitor (or a window) to stream. Choose "Entire screen" → your Clean Feed monitor.
+- **Pause** — freezes the stream; the client keeps the last frame. **Stop** ends the stream.
+- **Fullscreen** (or double-click the preview) — enlarges the preview.
+- The top bar shows the status (live / paused / not streaming), the browser engine and capture method, the version, and the **RU/EN** language switch.
+
+### 2. Internet, Wi-Fi or both
+
+<img src="docs/img/panel-modes.png" width="370" align="right" alt="How viewers watch: Internet, Wi-Fi, Both">
+
+| Mode | For | How it travels | Expected latency* |
+|---|---|---|---|
+| **Internet** | a client in another city | Cloudflare Tunnel (HTTPS) | ≈0.2–0.5 s on a good connection |
+| **Wi-Fi** | everyone in the same room | WebRTC, directly over the local network; no internet needed | ≈0.1–0.25 s |
+| **Both** | a room plus remote viewers | both at once; each frame is encoded only once | as above |
+
+<sub>* Estimates from bench measurements plus typical network delay — see [Latency](#latency).</sub>
+
+Switching modes only disconnects people when it has to (e.g. leaving "Both" for "Wi-Fi" drops internet viewers), and the app asks first.
+
+<br clear="right">
+
+### 3. Links and QR code
+
+<table><tr>
+<td width="50%" valign="top"><img src="docs/img/panel-internet-link.png" alt="Internet link panel"><br><b>Internet link</b> — a random <code>https://…trycloudflare.com/v/…</code> address. Copy it and send it to the client. It works while the app is open and changes on every launch.</td>
+<td width="50%" valign="top"><img src="docs/img/panel-wifi-link.png" alt="Wi-Fi link panel with QR code"><br><b>Wi-Fi link</b> — <code>http://&lt;PC IP&gt;:8790/v/…</code> with a QR code. If the PC has several network adapters, pick the address of the Wi-Fi the phones are on.</td>
+</tr></table>
+
+Click the QR code to show it full-screen — handy for a room full of people:
+
+<p align="center"><img src="docs/img/qr-fullscreen.png" width="640" alt="Full-screen QR code"></p>
+
+### 4. Always 1920×1080
+
+The client always gets a 1920×1080 frame. If your monitor isn't 1080p, GradeStream asks how to convert it and remembers the answer for that resolution (change it later with **change** under the preview).
+
+<p align="center"><img src="docs/img/format-dialog.png" width="560" alt="Resolution dialog: crop to 16:9 and downscale, or fit with black bars"></p>
+
+| Your monitor | Options (★ recommended) |
+|---|---|
+| 1920×1080 | used as is |
+| 4K, 1440p and other 16:9 | ★ downscale to 1920×1080 · 1:1 center crop (pixel-for-pixel, for checking grain and noise) |
+| 720p and smaller 16:9 | ★ upscale to 1920×1080 |
+| 1920×1200 | ★ crop the 60-px bars top and bottom (Resolve centers a 16:9 Clean Feed there) · fit with bars |
+| 2560×1600, ultrawide, others | ★ crop to 16:9 from the center → scale to 1920×1080 · fit with bars |
+
+### 5. Quality
+
+<img src="docs/img/panel-quality.png" width="370" align="right" alt="Quality panel: bitrate, frame rate, codec info">
+
+- **Bitrate** — 4 / 8 / 12 / 16 / 24 Mbit/s. 8–12 suits a phone; use 4 for a weak connection, 16–24 when gradients and fine detail matter and the network allows.
+- **Frames/s** — 12 / 24 / 25 / 30 / 50 / 60. At 12 fps each frame gets about twice the bits of 25 fps: cleaner shadows and gradients while you tweak, choppier playback. Change it live.
+- The line below shows the codec and whether the **hardware** encoder (NVENC / Quick Sync / AMF) is in use.
+
+<br clear="right">
+
+### 6. Audio
+
+<img src="docs/img/panel-audio.png" width="370" align="right" alt="Audio panel: source selector, bitrate and level meter">
+
+- **No audio** — all bandwidth goes to the picture (default).
+- **Output device** — everything playing on a Windows output device (e.g. your speakers).
+- **Single application** — only one app and its child processes, e.g. only Resolve: no messenger pings or browser sounds reach the client (Windows 10 2004+).
+- **1 kHz test tone** — check that sound reaches the client before the session.
+- **Audio bitrate** 64 / 128 / 192 kbit/s (Opus), plus a level meter. The choice is remembered; an app is found again by name after a restart.
+
+The client hears sound after tapping **Turn sound on** (phones only allow audio after a tap). Over the internet, no audio data is sent to a client until they tap it; on Wi-Fi the audio travels with the video and is simply unmuted.
+
+<br clear="right">
+
+### 7. What the client sees
+
+<p align="center"><img src="docs/img/client-phone-mark.png" width="760" alt="Client's phone in marker mode: Tap a spot on the frame"></p>
+
+| Button | What it does |
+|---|---|
+| **Turn sound on** | starts audio (shown only when you stream audio) |
+| **Mark a point** | then tap the frame and type a comment — it reaches you instantly |
+| **Fullscreen** | full-screen picture; on iPhone it uses the system video player |
+| **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
+| **Hide** | hides the buttons; tap the screen to bring them back |
+
+The page follows the language of the client's phone (English or Russian). With the internet link it also keeps the phone screen from dimming.
+
+### 8. Client markers
+
+<p align="center"><img src="docs/img/preview-markers.png" width="760" alt="Preview with two client markers and their comments"></p>
+
+<img src="docs/img/panel-markers.png" width="370" align="right" alt="Client markers panel: overlay, monitor, screenshot folder and marker list">
+
+When the client places a marker you get:
+
+- a **beep** and the marker with its comment on the preview;
+- the same marker **on top of your Clean Feed monitor** for 20 s. The overlay window is excluded from screen capture, so the client never sees it in the stream. Pick the right monitor in **Monitor** (it is auto-detected by resolution). **Clear markers from screen** removes them at once;
+- a line in the marker list with time, device, pixel position and comment.
+
+<br clear="right">
+
+### 9. Marker screenshots and the comment summary
+
+Every marker saves a PNG of **the frame the client was actually looking at** — the app keeps the last ~4.5 s of frames and compensates for each viewer's latency — with the marker, the number and the comment burned in:
+
+![Saved marker screenshot](docs/img/marker-snapshot.png)
+
+All markers of a session are collected in `comments.html` (with "Done" checkboxes, auto-refreshing every 10 s, so you can keep it open during the session) and `comments.txt`:
+
+![Comment summary page](docs/img/comments-summary.png)
+
+- **Choose folder…** — where to save (remembered; default `Documents\GradeStream`).
+- **A separate subfolder for each session** — on by default; off writes into the chosen folder with the date in file names. Nothing is ever overwritten.
+- **Open folder** / **All comments** — open the folder or the summary page.
+
+### 10. Viewers
+
+<img src="docs/img/panel-viewers.png" width="370" align="right" alt="Viewers panel: three devices with path and bitrate">
+
+Each viewer is listed with the device type, how they're connected (via internet / Wi-Fi direct), the bitrate they actually receive, and whether they turned the sound on. If a client's connection can't keep up, a warning suggests lowering the bitrate.
+
+<br clear="right">
+
+### 11. Tray icon, language, closing
+
+- GradeStream has its **own taskbar icon** (even though it uses the Edge/Chrome engine) and an icon **near the clock**: click to bring the window back; right-click for **Show window / Stop streaming / Exit**. The tooltip shows "live, viewers: N".
+- Minimizing during a live stream shows a one-time notification about where the app went.
+- Closing the window while live asks for confirmation; **Exit** stops the stream, the tunnel and audio capture in one go.
+- **RU/EN** in the top bar switches the language without interrupting the stream. By default the app follows the Windows language.
+
+## Settings reference
+
+All settings are remembered between launches.
+
+| Setting | Where | Values | Default |
+|---|---|---|---|
+| How viewers watch | panel "How viewers watch" | Internet · Wi-Fi · Both | Internet |
+| Resolution conversion | dialog after choosing a screen; **change** under the preview | as is · downscale · upscale · 1:1 center crop · crop to 16:9 · fit with bars | recommended option for your monitor |
+| Bitrate | Quality | 4 / 8 / 12 / 16 / 24 Mbit/s | 8 Mbit/s |
+| Frames per second | Quality | 12 / 24 / 25 / 30 / 50 / 60 | 25 |
+| Audio source | Audio | none · output device · single application · test tone | none |
+| Audio bitrate | Audio | 64 / 128 / 192 kbit/s | 128 kbit/s |
+| Markers on top of the Clean Feed | Client markers | on / off · monitor | on · auto-detected |
+| Save a screenshot of every marker | Client markers | on / off | on |
+| Screenshot folder | Client markers → Choose folder… | any folder | `Documents\GradeStream` |
+| Subfolder per session | Client markers | on / off | on |
+| Wi-Fi address | Wi-Fi link (shown when the PC has several networks) | the PC's local IP addresses | the main network |
+| Interface language | RU/EN in the top bar | English · Русский | Windows language |
 
 ## How it works
 
@@ -137,7 +295,7 @@ The just-noticeable difference for a human is about ΔE2000 ≈ 1.0. The residua
 
 Requires Microsoft Edge (preinstalled on Windows) or Google Chrome — GradeStream uses their engine for capture and encoding. If the version is too old, the app tells you what to update.
 
-## Usage
+## Quick start
 
 1. In Resolve: **Workspace → Video Clean Feed →** the monitor for the client.
 2. In GradeStream, choose a mode: "Internet", "Wi-Fi" or "Both".

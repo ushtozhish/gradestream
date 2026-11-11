@@ -28,7 +28,8 @@
   .stage .empty { position:absolute; inset:0; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; color:var(--dim); text-align:center; padding:20px; }
   .badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.7); color:#ccc; font-size:12px; padding:3px 8px; border-radius:4px; }
   .mark { position:absolute; width:24px; height:24px; margin:-12px 0 0 -12px; border:2px solid var(--acc); border-radius:50%; box-shadow:0 0 0 2px rgba(0,0,0,.6); pointer-events:none; animation:pulse 1.2s ease-out 3; }
-  .mark span { position:absolute; left:28px; top:-3px; white-space:nowrap; background:rgba(0,0,0,.8); color:#fff; padding:2px 7px; border-radius:4px; font-size:13px; }
+  .mark span { position:absolute; left:28px; top:-3px; white-space:nowrap; max-width:min(420px, 60vw); overflow:hidden; text-overflow:ellipsis; background:rgba(0,0,0,.8); color:#fff; padding:2px 7px; border-radius:4px; font-size:13px; }
+  .mark.left span { left:auto; right:28px; }
   @keyframes pulse { 0% { transform:scale(1.8); opacity:.3 } 100% { transform:scale(1); opacity:1 } }
   .row { display:flex; gap:8px; align-items:center; margin:8px 0; flex-wrap:wrap; }
   label.l { color:var(--dim); min-width:100px; }
@@ -987,7 +988,11 @@ function showMark(m) {
   const el = document.createElement('div');
   el.className = 'mark';
   el.style.left = (x * 100) + '%'; el.style.top = (y * 100) + '%';
-  if (m.text) { const s = document.createElement('span'); s.textContent = m.text; el.appendChild(s); }
+  if (m.text) {
+    const s = document.createElement('span'); s.textContent = m.text; s.title = m.text; el.appendChild(s);
+    // у правого края подпись уходит влево от метки, чтобы не обрезаться
+    requestAnimationFrame(() => { const st = $('stage').getBoundingClientRect(), r = s.getBoundingClientRect(); if (r.right > st.right - 4) el.classList.add('left'); });
+  }
   $('stage').appendChild(el);
   setTimeout(() => el.remove(), 20000);
   const list = $('marks');
