@@ -1,8 +1,8 @@
-// Замер цвета (ΔE2000) и задержки через настоящий конвейер GradeStream.
-// Запуск (Linux/macOS, нужен Node.js и Playwright с Chromium):
+// Measures color (ΔE2000) and latency through the real GradeStream pipeline.
+// Run (Linux/macOS, needs Node.js and Playwright with Chromium):
 //   cd app && go build -o gs . && GS_NO_TUNNEL=1 GS_LAN_ANY=1 ./gs > ../tests/gs.log 2>&1 &
 //   cd tests && npm i playwright && GS_LOG=gs.log BR=8000000 node colortest.js
-// GS_LAN_ANY разрешает тестовые адреса вне частных сетей, GS_NO_TUNNEL не поднимает Cloudflare.
+// GS_LAN_ANY allows test addresses outside private ranges, GS_NO_TUNNEL skips Cloudflare.
 const fs = require('fs'); const { chromium } = require('playwright');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ---- таблица ----

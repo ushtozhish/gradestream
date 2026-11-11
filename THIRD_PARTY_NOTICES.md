@@ -1,17 +1,17 @@
-# Сторонние компоненты
+# Third-party components
 
-GradeStream распространяется под лицензией MIT (см. [LICENSE](LICENSE)). В программу и установщик входят компоненты других авторов:
+GradeStream is released under the MIT license (see [LICENSE](LICENSE)). The app and the installer include components by other authors:
 
-| Компонент | Версия | Лицензия | Где используется |
+| Component | Version | License | Used for |
 |---|---|---|---|
-| [cloudflared](https://github.com/cloudflare/cloudflared) — Cloudflare, Inc. | 2026.10.7, официальный подписанный файл | Apache License 2.0 | Публичная ссылка через Cloudflare Tunnel; лежит в установщике без изменений |
-| [Pion WebRTC](https://github.com/pion/webrtc) и модули Pion (ice, dtls, srtp, sctp, rtp, rtcp, interceptor, …) | v4.2.26 | MIT | Передача по Wi-Fi (WebRTC) |
-| [go-qrcode](https://github.com/skip2/go-qrcode) — Tom Harwood | 2020-06-17 | MIT | QR-код ссылки |
-| [google/uuid](https://github.com/google/uuid) | 1.6.0 | BSD-3-Clause | Зависимость Pion |
-| [wlynxg/anet](https://github.com/wlynxg/anet) | 0.0.5 | BSD-3-Clause | Зависимость Pion |
-| [golang.org/x/net, crypto, sys, time](https://go.googlesource.com/) — The Go Authors | см. `app/go.mod` | BSD-3-Clause | Зависимости Pion |
-| Go runtime и стандартная библиотека — The Go Authors | 1.27 | BSD-3-Clause | Вся программа |
+| [cloudflared](https://github.com/cloudflare/cloudflared) — Cloudflare, Inc. | 2026.10.7, official signed binary | Apache License 2.0 | Public link via Cloudflare Tunnel; shipped unmodified inside the installer |
+| [Pion WebRTC](https://github.com/pion/webrtc) and Pion modules (ice, dtls, srtp, sctp, rtp, rtcp, interceptor, …) | v4.2.26 | MIT | Wi-Fi streaming (WebRTC) |
+| [go-qrcode](https://github.com/skip2/go-qrcode) — Tom Harwood | 2020-06-17 | MIT | QR code for the link |
+| [google/uuid](https://github.com/google/uuid) | 1.6.0 | BSD-3-Clause | Pion dependency |
+| [wlynxg/anet](https://github.com/wlynxg/anet) | 0.0.5 | BSD-3-Clause | Pion dependency |
+| [golang.org/x/net, crypto, sys, time](https://go.googlesource.com/) — The Go Authors | see `app/go.mod` | BSD-3-Clause | Pion dependencies |
+| Go runtime and standard library — The Go Authors | 1.27 | BSD-3-Clause | The whole app |
 
-Полные тексты лицензий — в репозиториях компонентов по ссылкам выше. cloudflared поставляется в неизменённом виде, исходный код: <https://github.com/cloudflare/cloudflared/tree/2026.10.7>.
+Full license texts are in each component's repository linked above. cloudflared is distributed unmodified; source code: <https://github.com/cloudflare/cloudflared/tree/2026.10.7>.
 
-Cloudflare Tunnel — сервис компании Cloudflare. Быстрые туннели без аккаунта (trycloudflare.com) Cloudflare предоставляет без гарантий доступности и на условиях [Cloudflare Online Services Terms of Use](https://www.cloudflare.com/website-terms/).
+Cloudflare Tunnel is a Cloudflare service. Account-less quick tunnels (trycloudflare.com) are provided by Cloudflare with no uptime guarantee and under the [Cloudflare Online Services Terms of Use](https://www.cloudflare.com/website-terms/).

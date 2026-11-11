@@ -1,7 +1,7 @@
-Сюда сборочный скрипт (`build/build.ps1` или `build/build.sh`) кладёт файлы, которые установщик вшивает в себя:
+The build script (`build/build.ps1` or `build/build.sh`) puts the files the installer embeds here:
 
-- `GradeStream.exe` — собранная программа из `app/`;
-- `cloudflared.exe` — официальный подписанный cloudflared для Windows (скачивается из релизов Cloudflare);
-- `gradestream.ico` — иконка (копия `docs/gradestream.ico`).
+- `GradeStream.exe` — the app built from `app/`;
+- `cloudflared.exe` — the official Cloudflare-signed cloudflared for Windows (downloaded from Cloudflare's releases);
+- `gradestream.ico` — the icon (copy of `docs/gradestream.ico`).
 
-В репозиторий эти файлы не коммитятся.
+These files are not committed to the repository.
