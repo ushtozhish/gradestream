@@ -67,7 +67,7 @@
   .opt:hover { border-color:#555; }
   .opt input { margin-right:8px; }
   .opt .d { color:var(--dim); font-size:12px; margin:3px 0 0 24px; }
-  .opt.rec b::after { content:" — рекомендуется"; color:var(--acc); font-weight:400; font-size:12px; }
+  .opt.rec b::after { content:var(--rec, " — рекомендуется"); color:var(--acc); font-weight:400; font-size:12px; }
 </style>
 </head>
 <body>
@@ -75,7 +75,7 @@
   <div class="dot" id="liveDot"></div>
   <h1>GradeStream</h1>
   <span class="muted" id="liveText">не транслируется</span>
-  <span class="ver"><span id="verInfo"></span>v__VERSION__</span>
+  <span class="ver"><span id="verInfo"></span>v__VERSION__ <button class="link" id="btnLang" title="Язык интерфейса / Interface language">EN</button></span>
 </header>
 
 <main>
@@ -83,64 +83,64 @@
     <div class="stage" id="stage">
       <canvas id="out" width="1920" height="1080"></canvas>
       <div class="empty" id="empty">
-        <div>Нажми «Выбрать экран» и укажи монитор с Clean Feed</div>
-        <div class="muted">Здесь будет ровно то, что видит клиент: 1920×1080</div>
+        <div data-en="Click «Choose screen» and pick the monitor with the Clean Feed">Нажми «Выбрать экран» и укажи монитор с Clean Feed</div>
+        <div class="muted" data-en="This shows exactly what the client sees: 1920×1080">Здесь будет ровно то, что видит клиент: 1920×1080</div>
       </div>
       <div class="badge" id="badge" style="display:none"></div>
-      <button id="btnFS" title="Двойной клик по превью тоже разворачивает">Во весь экран</button>
+      <button id="btnFS" title="Двойной клик по превью тоже разворачивает" data-en-title="Double-click the preview to go fullscreen too" data-en="Fullscreen">Во весь экран</button>
     </div>
     <div class="row" style="margin-top:12px">
       <button class="primary" id="btnStart">Выбрать экран</button>
       <button id="btnPause" disabled>Пауза</button>
-      <button class="danger" id="btnStop" disabled>Остановить</button>
+      <button class="danger" id="btnStop" disabled data-en="Stop">Остановить</button>
       <span class="muted" id="fmtInfo"></span>
-      <button class="link" id="btnFmt" style="display:none">изменить</button>
+      <button class="link" id="btnFmt" style="display:none" data-en="change">изменить</button>
     </div>
-    <p class="muted">В DaVinci Resolve: Workspace → Video Clean Feed → второй монитор. Здесь выбери «Весь экран» → этот монитор. Само окно GradeStream держи на другом мониторе.</p>
+    <p class="muted" data-en="In DaVinci Resolve: Workspace → Video Clean Feed → second monitor. Here choose «Entire screen» → that monitor. Keep the GradeStream window itself on another monitor.">В DaVinci Resolve: Workspace → Video Clean Feed → второй монитор. Здесь выбери «Весь экран» → этот монитор. Само окно GradeStream держи на другом мониторе.</p>
     <p class="muted bad" id="errBox"></p>
   </section>
 
   <aside>
     <div class="panel">
-      <h2>Как смотрят</h2>
+      <h2 data-en="How viewers watch">Как смотрят</h2>
       <div class="seg">
-        <label><input type="radio" name="mode" value="internet" checked><span><b>Интернет</b><i>удалённо</i></span></label>
-        <label><input type="radio" name="mode" value="lan"><span><b>Wi-Fi</b><i>в комнате</i></span></label>
-        <label><input type="radio" name="mode" value="both"><span><b>Оба сразу</b><i>и там, и там</i></span></label>
+        <label><input type="radio" name="mode" value="internet" checked><span><b data-en="Internet">Интернет</b><i data-en="remote">удалённо</i></span></label>
+        <label><input type="radio" name="mode" value="lan"><span><b>Wi-Fi</b><i data-en="in the room">в комнате</i></span></label>
+        <label><input type="radio" name="mode" value="both"><span><b data-en="Both">Оба сразу</b><i data-en="room + remote">и там, и там</i></span></label>
       </div>
     </div>
 
     <div class="panel" id="netPanel">
       <h2>Ссылка для клиента</h2>
-      <div class="row"><input type="text" id="link" readonly placeholder="поднимаю туннель…"><button id="btnCopy" disabled>Копировать</button></div>
-      <div class="muted" id="tunnelInfo">Подключаюсь к Cloudflare…</div>
+      <div class="row"><input type="text" id="link" readonly placeholder="поднимаю туннель…" data-en-placeholder="starting the tunnel…"><button id="btnCopy" disabled data-en="Copy">Копировать</button></div>
+      <div class="muted" id="tunnelInfo" data-en="Connecting to Cloudflare…">Подключаюсь к Cloudflare…</div>
     </div>
 
     <div class="panel" id="lanPanel" style="display:none">
       <h2>Ссылка в сети Wi-Fi</h2>
-      <div class="row"><input type="text" id="lanLink" readonly placeholder="включаю…"><button id="btnLanCopy" disabled>Копировать</button></div>
-      <div class="row" id="lanIpRow" style="display:none"><label class="l">Адрес</label><select id="lanIp" style="flex:1;min-width:0"></select></div>
+      <div class="row"><input type="text" id="lanLink" readonly placeholder="включаю…" data-en-placeholder="starting…"><button id="btnLanCopy" disabled data-en="Copy">Копировать</button></div>
+      <div class="row" id="lanIpRow" style="display:none"><label class="l" data-en="Address">Адрес</label><select id="lanIp" style="flex:1;min-width:0"></select></div>
       <div id="qrBox" style="display:none;text-align:center;margin:10px 0 4px">
-        <img id="qr" alt="QR-код ссылки" style="width:210px;height:210px;background:#fff;border-radius:8px;padding:8px;cursor:zoom-in" title="Нажми, чтобы показать крупно">
-        <div class="muted">Наведите камеру телефона на код</div>
+        <img id="qr" alt="QR-код ссылки" data-en-alt="Link QR code" style="width:210px;height:210px;background:#fff;border-radius:8px;padding:8px;cursor:zoom-in" title="Нажми, чтобы показать крупно" data-en-title="Click to enlarge">
+        <div class="muted" data-en="Point the phone camera at the code">Наведите камеру телефона на код</div>
       </div>
       <div class="muted" id="lanInfo">Видео идёт напрямую по Wi-Fi, без интернета: задержка около 0,1 с. Телефоны должны быть в той же сети, что и компьютер.</div>
       <div class="muted warn" id="lanWarn" style="margin-top:6px"></div>
     </div>
 
     <div class="panel">
-      <h2>Качество (выход всегда 1920×1080)</h2>
-      <div class="row"><label class="l">Битрейт</label>
+      <h2 data-en="Quality (output is always 1920×1080)">Качество (выход всегда 1920×1080)</h2>
+      <div class="row"><label class="l" data-en="Bitrate">Битрейт</label>
         <select id="bitrate">
-          <option value="4000000">4 Мбит/с — слабый интернет</option>
-          <option value="8000000" selected>8 Мбит/с</option>
-          <option value="12000000">12 Мбит/с</option>
-          <option value="16000000">16 Мбит/с</option>
-          <option value="24000000">24 Мбит/с — максимум деталей</option>
+          <option value="4000000" data-en="4 Mbit/s — weak internet">4 Мбит/с — слабый интернет</option>
+          <option value="8000000" selected data-en="8 Mbit/s">8 Мбит/с</option>
+          <option value="12000000" data-en="12 Mbit/s">12 Мбит/с</option>
+          <option value="16000000" data-en="16 Mbit/s">16 Мбит/с</option>
+          <option value="24000000" data-en="24 Mbit/s — maximum detail">24 Мбит/с — максимум деталей</option>
         </select></div>
-      <div class="row"><label class="l">Кадры/с</label>
+      <div class="row"><label class="l" data-en="Frames/s">Кадры/с</label>
         <select id="fps">
-          <option value="12">12 — экономия трафика</option>
+          <option value="12" data-en="12 — saves bandwidth">12 — экономия трафика</option>
           <option value="24">24</option>
           <option value="25" selected>25</option>
           <option value="30">30</option>
@@ -151,59 +151,91 @@
     </div>
 
     <div class="panel">
-      <h2>Звук</h2>
+      <h2 data-en="Audio">Звук</h2>
       <div class="row">
-        <select id="audioSrc" style="flex:1;min-width:0"><option value="none">Без звука — легче сигнал</option></select>
-        <button id="btnAudioRefresh" title="Обновить список устройств и приложений">↻</button>
+        <select id="audioSrc" style="flex:1;min-width:0"><option value="none" data-en="No audio — lighter stream">Без звука — легче сигнал</option></select>
+        <button id="btnAudioRefresh" title="Обновить список устройств и приложений" data-en-title="Refresh devices and applications">↻</button>
       </div>
-      <div class="row"><label class="l">Битрейт звука</label>
+      <div class="row"><label class="l" data-en="Audio bitrate">Битрейт звука</label>
         <select id="abitrate">
-          <option value="64000">64 кбит/с</option>
-          <option value="128000" selected>128 кбит/с</option>
-          <option value="192000">192 кбит/с</option>
+          <option value="64000" data-en="64 kbit/s">64 кбит/с</option>
+          <option value="128000" selected data-en="128 kbit/s">128 кбит/с</option>
+          <option value="192000" data-en="192 kbit/s">192 кбит/с</option>
         </select></div>
-      <div class="row"><span class="muted" style="min-width:100px">Уровень</span>
+      <div class="row"><span class="muted" style="min-width:100px" data-en="Level">Уровень</span>
         <div style="flex:1;height:8px;background:#0d0d0d;border:1px solid var(--line);border-radius:4px;overflow:hidden"><div id="meterBar" style="height:100%;width:0;background:var(--ok);transition:width .08s"></div></div></div>
-      <div class="muted" id="audioInfo">Звук передаётся только во время трансляции.</div>
+      <div class="muted" id="audioInfo" data-en="Audio is sent only while streaming.">Звук передаётся только во время трансляции.</div>
     </div>
 
     <div class="panel">
-      <h2>Зрители <span id="vcount">0</span></h2>
+      <h2><span data-en="Viewers">Зрители</span> <span id="vcount">0</span></h2>
       <div id="viewers" class="muted">пока никого</div>
     </div>
 
     <div class="panel">
-      <h2>Метки клиента</h2>
-      <label class="row" style="margin-top:0"><input type="checkbox" id="ovOn" checked> Показывать метки поверх Clean Feed</label>
-      <div class="row"><label class="l">Монитор</label><select id="ovMon" style="flex:1;min-width:0"><option value="-1">определится после выбора экрана</option></select></div>
-      <div class="row"><button id="btnClearMarks">Убрать метки с экрана</button></div>
-      <div class="muted" id="ovInfo">Метки видишь только ты — Windows не пускает это окно в захват, клиенту они не уходят.</div>
+      <h2 data-en="Client markers">Метки клиента</h2>
+      <label class="row" style="margin-top:0"><input type="checkbox" id="ovOn" checked> <span data-en="Show markers on top of the Clean Feed">Показывать метки поверх Clean Feed</span></label>
+      <div class="row"><label class="l" data-en="Monitor">Монитор</label><select id="ovMon" style="flex:1;min-width:0"><option value="-1" data-en="detected after you choose a screen">определится после выбора экрана</option></select></div>
+      <div class="row"><button id="btnClearMarks" data-en="Clear markers from screen">Убрать метки с экрана</button></div>
+      <div class="muted" id="ovInfo" data-en="Only you see the markers — Windows keeps this window out of the capture, so they never reach the client.">Метки видишь только ты — Windows не пускает это окно в захват, клиенту они не уходят.</div>
       <div style="height:1px;background:var(--line);margin:10px 0"></div>
-      <label class="row"><input type="checkbox" id="snapOn" checked> Сохранять скриншот каждой метки</label>
-      <div class="muted" style="word-break:break-all">Сохраняется в: <span id="snapPath" style="color:var(--text)">…</span></div>
-      <div class="row"><button id="btnChoose">Выбрать папку…</button><button id="btnFolder">Открыть папку</button><button id="btnSummary" disabled>Все комментарии</button></div>
-      <label class="row" style="margin:4px 0"><input type="checkbox" id="snapSub" checked> Отдельная подпапка на каждую сессию</label>
-      <div class="muted" id="snapInfo"><button class="link" id="btnResetFolder" style="display:none">вернуть папку по умолчанию (Документы\GradeStream)</button></div>
+      <label class="row"><input type="checkbox" id="snapOn" checked> <span data-en="Save a screenshot of every marker">Сохранять скриншот каждой метки</span></label>
+      <div class="muted" style="word-break:break-all"><span data-en="Saved to:">Сохраняется в:</span> <span id="snapPath" style="color:var(--text)">…</span></div>
+      <div class="row"><button id="btnChoose" data-en="Choose folder…">Выбрать папку…</button><button id="btnFolder" data-en="Open folder">Открыть папку</button><button id="btnSummary" disabled data-en="All comments">Все комментарии</button></div>
+      <label class="row" style="margin:4px 0"><input type="checkbox" id="snapSub" checked> <span data-en="A separate subfolder for each session">Отдельная подпапка на каждую сессию</span></label>
+      <div class="muted" id="snapInfo"><button class="link" id="btnResetFolder" style="display:none" data-en="reset to the default folder (Documents\GradeStream)">вернуть папку по умолчанию (Документы\GradeStream)</button></div>
       <div style="height:1px;background:var(--line);margin:10px 0"></div>
-      <div id="marks" class="muted">Клиент может нажать «Отметить точку» и тапнуть по кадру — метка появится на превью.</div>
+      <div id="marks" class="muted" data-en="The client can tap «Mark a point» and then tap the frame — the marker appears on the preview.">Клиент может нажать «Отметить точку» и тапнуть по кадру — метка появится на превью.</div>
     </div>
   </aside>
 </main>
 
-<div id="qrBig"><img id="qrBigImg" alt="QR-код ссылки"><div id="qrBigText" style="font-size:18px"></div><div class="muted">Нажми, чтобы закрыть</div></div>
+<div id="qrBig"><img id="qrBigImg" alt="QR-код ссылки" data-en-alt="Link QR code"><div id="qrBigText" style="font-size:18px"></div><div class="muted" data-en="Click to close">Нажми, чтобы закрыть</div></div>
 
 <div id="fmtDlg">
   <div class="box">
-    <h3>Разрешение экрана не 1920×1080</h3>
+    <h3 data-en="Screen resolution is not 1920×1080">Разрешение экрана не 1920×1080</h3>
     <div class="muted" id="fmtWhy"></div>
     <form id="fmtForm"></form>
-    <label class="muted" style="display:block;margin:10px 0"><input type="checkbox" id="fmtRemember" checked> Запомнить для этого разрешения</label>
-    <div class="row" style="justify-content:flex-end"><button class="primary" id="fmtOk">Применить</button></div>
+    <label class="muted" style="display:block;margin:10px 0"><input type="checkbox" id="fmtRemember" checked> <span data-en="Remember for this resolution">Запомнить для этого разрешения</span></label>
+    <div class="row" style="justify-content:flex-end"><button class="primary" id="fmtOk" data-en="Apply">Применить</button></div>
   </div>
 </div>
 
 <script>
 const KEY = '__HOST_KEY__';
+
+// ---------- Язык интерфейса (RU/EN) ----------
+// Источник истины — программа (по языку Windows или выбору пользователя); до её ответа — язык браузера.
+let LANG = ['ru', 'kk', 'be', 'uk'].includes((navigator.language || '').slice(0, 2)) ? 'ru' : 'en';
+try { const sv = localStorage.getItem('gs.lang'); if (sv === 'ru' || sv === 'en') LANG = sv; } catch {}
+const L = (ru, en) => LANG === 'en' ? en : ru;
+function applyStatic() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-en]').forEach(el => {
+    if (el.dataset.ru === undefined) el.dataset.ru = el.innerHTML;
+    el.innerHTML = LANG === 'en' ? el.dataset.en : el.dataset.ru;
+  });
+  for (const attr of ['title', 'placeholder', 'alt']) {
+    document.querySelectorAll(`[data-en-${attr}]`).forEach(el => {
+      const k = 'ru' + attr[0].toUpperCase() + attr.slice(1);
+      if (el.dataset[k] === undefined) el.dataset[k] = el.getAttribute(attr) || '';
+      el.setAttribute(attr, LANG === 'en' ? el.getAttribute(`data-en-${attr}`) : el.dataset[k]);
+    });
+  }
+  document.documentElement.style.setProperty('--rec', JSON.stringify(L(' — рекомендуется', ' — recommended')));
+  const b = document.getElementById('btnLang'); if (b) b.textContent = LANG === 'en' ? 'RU' : 'EN';
+}
+function setLangUI(lang, fromServer) {
+  if (lang !== 'ru' && lang !== 'en') return;
+  const changed = lang !== LANG;
+  LANG = lang;
+  try { localStorage.setItem('gs.lang', lang); } catch {}
+  applyStatic();
+  if (!fromServer) sendJSON({ t: 'lang', lang });
+  if (changed && typeof refreshDynamic === 'function') refreshDynamic();
+}
+applyStatic();
 const OUT_W = 1920, OUT_H = 1080;
 const $ = id => document.getElementById(id);
 const canvas = $('out');
@@ -260,21 +292,21 @@ function fmtOptions(w, h) {
   const is169 = Math.abs(w / h - 16 / 9) < 0.005;
   const opts = [];
   if (is169) {
-    const dir = w > OUT_W ? 'Даунскейл' : 'Апскейл';
+    const dir = w > OUT_W ? L('Даунскейл', 'Downscale') : L('Апскейл', 'Upscale');
     opts.push({ id: 'scale', rec: true, title: `${dir} ${w}×${h} → 1920×1080`,
-      desc: w > OUT_W ? 'Пропорции те же (16:9), картинка уменьшается целиком. Стандартный путь для 4K / 1440p.' : 'Пропорции те же, картинка увеличивается. Детализация не прибавится, но формат будет стандартный.' });
-    if (w > OUT_W) opts.push({ id: 'crop1', title: 'Кроп 1920×1080 из центра без масштаба',
-      desc: 'Клиент увидит только центральный фрагмент экрана, зато пиксель в пиксель — удобно для проверки шума, зерна и деталей.' });
+      desc: w > OUT_W ? L('Пропорции те же (16:9), картинка уменьшается целиком. Стандартный путь для 4K / 1440p.', 'Same proportions (16:9), the whole picture is scaled down. The standard choice for 4K / 1440p.') : L('Пропорции те же, картинка увеличивается. Детализация не прибавится, но формат будет стандартный.', 'Same proportions, the picture is scaled up. No extra detail, but a standard format.') });
+    if (w > OUT_W) opts.push({ id: 'crop1', title: L('Кроп 1920×1080 из центра без масштаба', '1920×1080 center crop, no scaling'),
+      desc: L('Клиент увидит только центральный фрагмент экрана, зато пиксель в пиксель — удобно для проверки шума, зерна и деталей.', 'The client sees only the center of the screen, but pixel for pixel — handy for checking noise, grain and detail.') });
   } else {
     const c = crop169(w, h);
     const exact = c.sw === OUT_W && c.sh === OUT_H;
-    const what = w / h > 16 / 9 ? 'по бокам' : 'сверху и снизу';
+    const what = w / h > 16 / 9 ? L('по бокам', 'at the sides') : L('сверху и снизу', 'top and bottom');
     opts.push({ id: 'crop', rec: true,
-      title: exact ? `Кроп лишнего: 1920×1080 из центра (${what})` : `Кроп до 16:9 (${c.sw}×${c.sh} из центра) → ${c.sw > OUT_W ? 'даунскейл' : 'апскейл'} до 1920×1080`,
-      desc: exact ? `Обрезаются полосы ${what}, остальное пиксель в пиксель. Resolve выводит Clean Feed 16:9 по центру такого монитора — значит, обрезается только пустое поле.`
-                  : `Обрезаются полосы ${what}, остаётся область 16:9. Resolve выводит Clean Feed именно туда, поэтому картинка не теряется.` });
-    opts.push({ id: 'fit', title: 'Вписать весь экран с чёрными полями',
-      desc: 'Ничего не обрезается, но картинка меньше и с полями. Пригодится, если кадр выведен не по центру.' });
+      title: exact ? L(`Кроп лишнего: 1920×1080 из центра (${what})`, `Crop the extra: 1920×1080 from the center (${what})`) : L(`Кроп до 16:9 (${c.sw}×${c.sh} из центра) → ${c.sw > OUT_W ? 'даунскейл' : 'апскейл'} до 1920×1080`, `Crop to 16:9 (${c.sw}×${c.sh} from the center) → ${c.sw > OUT_W ? 'downscale' : 'upscale'} to 1920×1080`),
+      desc: exact ? L(`Обрезаются полосы ${what}, остальное пиксель в пиксель. Resolve выводит Clean Feed 16:9 по центру такого монитора — значит, обрезается только пустое поле.`, `Bars ${what} are cut off, the rest is pixel for pixel. Resolve centers a 16:9 Clean Feed on such a monitor, so only empty margins are removed.`)
+                  : L(`Обрезаются полосы ${what}, остаётся область 16:9. Resolve выводит Clean Feed именно туда, поэтому картинка не теряется.`, `Bars ${what} are cut off, leaving a 16:9 area. Resolve puts the Clean Feed exactly there, so no picture is lost.`) });
+    opts.push({ id: 'fit', title: L('Вписать весь экран с чёрными полями', 'Fit the whole screen with black bars'),
+      desc: L('Ничего не обрезается, но картинка меньше и с полями. Пригодится, если кадр выведен не по центру.', 'Nothing is cut, but the picture is smaller with bars. Useful if the frame is not centered.') });
   }
   return opts;
 }
@@ -290,7 +322,7 @@ function computeRect(w, h, m) {
   return { sx: 0, sy: 0, sw: w, sh: h, dx: 0, dy: 0, dw: OUT_W, dh: OUT_H }; // exact
 }
 
-const MODE_NAMES = { exact: '1920×1080 без изменений', scale: 'масштаб до 1920×1080', crop1: 'центр 1920×1080 1:1', crop: 'кроп до 16:9', fit: 'вписано с полями' };
+const MODE_NAMES = () => ({ exact: L('1920×1080 без изменений', '1920×1080 as is'), scale: L('масштаб до 1920×1080', 'scaled to 1920×1080'), crop1: L('центр 1920×1080 1:1', '1920×1080 center 1:1'), crop: L('кроп до 16:9', 'cropped to 16:9'), fit: L('вписано с полями', 'fit with bars') });
 
 function applyMode(m) {
   mode = m;
@@ -298,7 +330,7 @@ function applyMode(m) {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, OUT_W, OUT_H);
   ctx.imageSmoothingEnabled = !(rect.sw === rect.dw && rect.sh === rect.dh);
   ctx.imageSmoothingQuality = 'high';
-  $('fmtInfo').textContent = `Экран ${srcW}×${srcH} → ${MODE_NAMES[m]}`;
+  $('fmtInfo').textContent = `${L('Экран', 'Screen')} ${srcW}×${srcH} → ${MODE_NAMES()[m]}`;
   $('btnFmt').style.display = m === 'exact' ? 'none' : '';
   forceKey();
 }
@@ -320,7 +352,7 @@ function onSourceSize(w, h) {
 function openFmtDialog() {
   const opts = fmtOptions(srcW, srcH);
   const is169 = Math.abs(srcW / srcH - 16 / 9) < 0.005;
-  $('fmtWhy').textContent = `Захваченный экран: ${srcW}×${srcH}${is169 ? ' (16:9)' : ` (${(srcW / srcH).toFixed(2)}:1, не 16:9)`}. Клиенту всегда уходит 1920×1080 — выбери, как привести.`;
+  $('fmtWhy').textContent = L(`Захваченный экран: ${srcW}×${srcH}${is169 ? ' (16:9)' : ` (${(srcW / srcH).toFixed(2)}:1, не 16:9)`}. Клиенту всегда уходит 1920×1080 — выбери, как привести.`, `Captured screen: ${srcW}×${srcH}${is169 ? ' (16:9)' : ` (${(srcW / srcH).toFixed(2)}:1, not 16:9)`}. The client always gets 1920×1080 — choose how to convert.`);
   $('fmtForm').innerHTML = opts.map(o => `
     <label class="opt${o.rec ? ' rec' : ''}"><input type="radio" name="m" value="${o.id}" ${o.id === mode ? 'checked' : ''}><b>${o.title}</b><div class="d">${o.desc}</div></label>`).join('');
   $('fmtDlg').style.display = 'flex';
@@ -336,7 +368,7 @@ $('fmtOk').onclick = () => {
 };
 
 // ================= Кодер H.264 =================
-let lastConfigMsg = null, codecName = '';
+let lastConfigMsg = null, codecName = '', codecHW = false, codecRaw = '';
 
 async function pickCodec(fps, bitrate) {
   // Внутри сети видео идёт по WebRTC — там любой телефон гарантированно принимает только Constrained Baseline
@@ -356,15 +388,16 @@ async function pickCodec(fps, bitrate) {
 async function setupEncoder() {
   const fps = +$('fps').value, bitrate = +$('bitrate').value;
   const cfg = await pickCodec(fps, bitrate);
-  if (!cfg) { err('Браузер не поддерживает кодирование H.264 (WebCodecs). Обновите Microsoft Edge или Google Chrome.'); return false; }
+  if (!cfg) { err(L('Браузер не поддерживает кодирование H.264 (WebCodecs). Обновите Microsoft Edge или Google Chrome.', 'The browser cannot encode H.264 (WebCodecs). Update Microsoft Edge or Google Chrome.')); return false; }
   if (encoder && encoder.state !== 'closed') { try { encoder.close(); } catch {} }
   encoder = new VideoEncoder({
     output: onChunk,
-    error: e => { err('Ошибка кодера: ' + e.message + ' — перезапускаю'); setTimeout(() => running && setupEncoder(), 500); },
+    error: e => { err(L('Ошибка кодера: ', 'Encoder error: ') + e.message + L(' — перезапускаю', ' — restarting')); setTimeout(() => running && setupEncoder(), 500); },
   });
   encoder.configure(cfg);
-  codecName = `${cfg.codec} · ${cfg.hardwareAcceleration === 'prefer-hardware' ? 'аппаратный' : 'программный'}`;
-  $('encInfo').textContent = `Кодек H.264 ${codecName}`;
+  codecHW = cfg.hardwareAcceleration === 'prefer-hardware'; codecRaw = cfg.codec;
+  codecName = `${cfg.codec} · ${codecHW ? L('аппаратный', 'hardware') : L('программный', 'software')}`;
+  $('encInfo').textContent = `${L('Кодек', 'Codec')} H.264 ${codecName}`;
   forceKey();
   return true;
 }
@@ -460,7 +493,7 @@ async function saveSnapshot(m, x, y) {
   // Номер и комментарий рядом с точкой
   c.font = '600 28px "Segoe UI", sans-serif';
   c.textBaseline = 'middle';
-  const label = `№${n}` + (m.text ? `  ${m.text}` : '');
+  const label = `${L('№', '#')}${n}` + (m.text ? `  ${m.text}` : '');
   const tw = Math.min(c.measureText(label).width, OUT_W - 120);
   let bx = px + 56, by = Math.min(Math.max(py - 24, 8), OUT_H - 56);
   if (bx + tw + 24 > OUT_W - 8) bx = px - 56 - tw - 24;
@@ -471,14 +504,14 @@ async function saveSnapshot(m, x, y) {
   const t = new Date().toLocaleTimeString('ru-RU');
   c.fillStyle = 'rgba(0,0,0,.72)'; c.fillRect(0, OUT_H - 44, OUT_W, 44);
   c.font = '22px "Segoe UI", sans-serif'; c.fillStyle = '#ddd';
-  c.fillText(`№${n} · ${t} · ${m.dev || 'клиент'}` + (m.text ? ` · ${m.text}` : ''), 16, OUT_H - 22, OUT_W - 32);
+  c.fillText(`${L('№', '#')}${n} · ${t} · ${m.dev || L('клиент', 'client')}` + (m.text ? ` · ${m.text}` : ''), 16, OUT_H - 22, OUT_W - 32);
 
   const blob = await oc.convertToBlob({ type: 'image/png' });
   const dataURL = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
   const resp = await fetch(`/api/snapshot?key=${KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dev: m.dev || '', text: m.text || '', x: Math.round(px), y: Math.round(py), marked: dataURL }) });
   const j = await resp.json();
-  if (!j.ok) throw new Error(j.error || 'не сохранилось');
+  if (!j.ok) throw new Error(j.error || L('не сохранилось', 'not saved'));
   snapCount = j.n;
   return j;
 }
@@ -493,30 +526,31 @@ function browserName() {
   let m = ua.match(/Edg\/(\d+)/); if (m) return { name: 'Microsoft Edge', ver: +m[1], edge: true };
   m = ua.match(/Chrome\/(\d+)/); if (m) return { name: 'Chrome', ver: +m[1] };
   m = ua.match(/Firefox\/(\d+)/); if (m) return { name: 'Firefox', ver: +m[1] };
-  return { name: 'браузер', ver: 0 };
+  return { name: L('браузер', 'browser'), ver: 0 };
 }
 function missingFeatures() {
   const miss = [];
-  if (!isSecureContext) miss.push('защищённого режима страницы');
-  if (!('VideoEncoder' in window)) miss.push('кодера видео (WebCodecs)');
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) miss.push('захвата экрана');
+  if (!isSecureContext) miss.push(L('защищённого режима страницы', 'a secure page context'));
+  if (!('VideoEncoder' in window)) miss.push(L('кодера видео (WebCodecs)', 'a video encoder (WebCodecs)'));
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) miss.push(L('захвата экрана', 'screen capture'));
   return miss;
 }
 const BR = browserName();
-const CAPTURE_MODE = 'MediaStreamTrackProcessor' in window ? 'покадрово' : 'через видеоэлемент';
+const CAPTURE_MODE = () => 'MediaStreamTrackProcessor' in window ? L('покадрово', 'per frame') : L('через видеоэлемент', 'via video element');
 function diagMsg() {
   return { t: 'diag', ua: navigator.userAgent, secure: isSecureContext, videoEncoder: 'VideoEncoder' in window,
     audioEncoder: 'AudioEncoder' in window, mstp: 'MediaStreamTrackProcessor' in window, rvfc: 'requestVideoFrameCallback' in HTMLVideoElement.prototype };
 }
-$('verInfo').textContent = `${BR.name} ${BR.ver || ''} · захват ${CAPTURE_MODE} · `;
+function showVerInfo() { $('verInfo').textContent = `${BR.name} ${BR.ver || ''} · ${L('захват', 'capture')} ${CAPTURE_MODE()} · `; }
+showVerInfo();
 showBrowserProblem();   // сразу показать, если браузер не подходит
 function showBrowserProblem() {
   const miss = missingFeatures();
   if (!miss.length) return false;
   const how = BR.edge
-    ? 'Обновите Microsoft Edge: откройте в Edge адрес <b>edge://settings/help</b>, дождитесь обновления, затем закройте и снова запустите GradeStream.'
-    : 'Обновите браузер до последней версии (или установите Microsoft Edge / Google Chrome) и перезапустите GradeStream.';
-  $('errBox').innerHTML = `${BR.name} ${BR.ver || ''}: не хватает ${miss.join(', ')}. ${how}`;
+    ? L('Обновите Microsoft Edge: откройте в Edge адрес <b>edge://settings/help</b>, дождитесь обновления, затем закройте и снова запустите GradeStream.', 'Update Microsoft Edge: open <b>edge://settings/help</b> in Edge, wait for the update, then close and restart GradeStream.')
+    : L('Обновите браузер до последней версии (или установите Microsoft Edge / Google Chrome) и перезапустите GradeStream.', 'Update the browser to the latest version (or install Microsoft Edge / Google Chrome) and restart GradeStream.');
+  $('errBox').innerHTML = `${BR.name} ${BR.ver || ''}: ${L('не хватает', 'missing')} ${miss.join(', ')}. ${how}`;
   return true;
 }
 
@@ -530,7 +564,7 @@ async function startCapture() {
       audio: false, selfBrowserSurface: 'exclude', surfaceSwitching: 'include', monitorTypeSurfaces: 'include',
     });
   } catch (e) {
-    if (e.name !== 'NotAllowedError') err('Не удалось захватить экран: ' + e.message);
+    if (e.name !== 'NotAllowedError') err(L('Не удалось захватить экран: ', 'Could not capture the screen: ') + e.message);
     return;
   }
   await stopCapture(false);
@@ -573,7 +607,7 @@ function readLoopVideo(track) {
   const tick = () => {
     if (videoSrc !== v || !running) return;
     if (v.readyState >= 2 && v.videoWidth) {
-      try { handleSourceFrame(v, v.videoWidth, v.videoHeight); } catch (e) { err('Кадр: ' + e.message); }
+      try { handleSourceFrame(v, v.videoWidth, v.videoHeight); } catch (e) { err(L('Кадр: ', 'Frame: ') + e.message); }
     }
   };
   // Окно видно — точно по новым кадрам; свёрнуто — по таймеру (браузер запущен без замедления фоновых таймеров)
@@ -599,7 +633,7 @@ async function readLoop(track) {
     try { r = await myReader.read(); } catch { break; }
     if (r.done) break;
     const frame = r.value;
-    try { handleSourceFrame(frame, frame.displayWidth, frame.displayHeight); } catch (e) { err('Кадр: ' + e.message); }
+    try { handleSourceFrame(frame, frame.displayWidth, frame.displayHeight); } catch (e) { err(L('Кадр: ', 'Frame: ') + e.message); }
     frame.close();
   }
 }
@@ -635,13 +669,13 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && run
 window.addEventListener('beforeunload', e => { if (running) { e.preventDefault(); e.returnValue = ''; } });
 
 function setLive() {
-  document.title = running ? (paused ? 'GradeStream — пауза' : 'GradeStream — в эфире') : 'GradeStream';
+  document.title = running ? (paused ? L('GradeStream — пауза', 'GradeStream — paused') : L('GradeStream — в эфире', 'GradeStream — live')) : 'GradeStream';
   $('liveDot').className = 'dot' + (running ? (paused ? ' pause' : ' live') : '');
-  $('liveText').textContent = running ? (paused ? 'пауза — клиент видит последний кадр' : 'в эфире') : 'не транслируется';
+  $('liveText').textContent = running ? (paused ? L('пауза — клиент видит последний кадр', 'paused — the client sees the last frame') : L('в эфире', 'live')) : L('не транслируется', 'not streaming');
   $('btnStop').disabled = !running;
   $('btnPause').disabled = !running;
-  $('btnPause').textContent = paused ? 'Продолжить' : 'Пауза';
-  $('btnStart').textContent = running ? 'Сменить экран' : 'Выбрать экран';
+  $('btnPause').textContent = paused ? L('Продолжить', 'Resume') : L('Пауза', 'Pause');
+  $('btnStart').textContent = running ? L('Сменить экран', 'Change screen') : L('Выбрать экран', 'Choose screen');
 }
 
 ['bitrate', 'fps'].forEach(id => $(id).onchange = async () => {
@@ -653,7 +687,7 @@ function setLive() {
 setInterval(() => {
   if (!running) { $('badge').style.display = 'none'; return; }
   $('badge').style.display = '';
-  $('badge').textContent = `1920×1080 · ${(frameCount / 2).toFixed(0)} к/с отправляется` + (paused ? ' · пауза' : '');
+  $('badge').textContent = `1920×1080 · ${(frameCount / 2).toFixed(0)} ${L('к/с отправляется', 'fps sent')}` + (paused ? L(' · пауза', ' · paused') : '');
   frameCount = 0;
 }, 2000);
 
@@ -668,18 +702,18 @@ function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 
 function fillAudioList(m) {
   const pref = loadAudioPref();
-  let html = '<option value="none">Без звука — легче сигнал</option>';
+  let html = `<option value="none">${L('Без звука — легче сигнал', 'No audio — lighter stream')}</option>`;
   if (m.devices && m.devices.length) {
-    html += '<optgroup label="Устройство вывода — всё, что на нём играет">';
-    for (const d of m.devices) html += `<option value="dev:${esc(d.id)}">${esc(d.name || 'Устройство')}${d.default ? ' (по умолчанию)' : ''}</option>`;
+    html += `<optgroup label="${L('Устройство вывода — всё, что на нём играет', 'Output device — everything playing on it')}">`;
+    for (const d of m.devices) html += `<option value="dev:${esc(d.id)}">${esc(d.name || L('Устройство', 'Device'))}${d.default ? L(' (по умолчанию)', ' (default)') : ''}</option>`;
     html += '</optgroup>';
   }
   if (m.apps && m.apps.length) {
-    html += '<optgroup label="Отдельное приложение">';
+    html += `<optgroup label="${L('Отдельное приложение', 'Single application')}">`;
     for (const a of m.apps) html += `<option value="app:${a.pid}" data-name="${esc(a.name)}">${esc(a.name)} — ${esc(a.title.slice(0, 50))}</option>`;
     html += '</optgroup>';
   }
-  html += '<optgroup label="Проверка"><option value="test">Тестовый сигнал 1 кГц</option></optgroup>';
+  html += `<optgroup label="${L('Проверка', 'Test')}"><option value="test">${L('Тестовый сигнал 1 кГц', '1 kHz test tone')}</option></optgroup>`;
   const sel = $('audioSrc');
   const cur = sel.value;
   sel.innerHTML = html;
@@ -706,8 +740,8 @@ $('abitrate').onchange = () => { if (aenc) setupAudioEncoder(); };
 function applyAudio() {
   const v = $('audioSrc').value;
   audioWanted = v;
-  if (v === 'none') { audioOff(); $('audioInfo').textContent = 'Без звука — весь канал отдан картинке.'; return; }
-  $('audioInfo').textContent = 'Подключаю звук…';
+  if (v === 'none') { audioOff(); $('audioInfo').textContent = L('Без звука — весь канал отдан картинке.', 'No audio — all bandwidth goes to the picture.'); return; }
+  $('audioInfo').textContent = L('Подключаю звук…', 'Connecting audio…');
   if (v === 'test') sendJSON({ t: 'audio-select', kind: 'test' });
   else if (v.startsWith('dev:')) sendJSON({ t: 'audio-select', kind: 'device', id: v.slice(4) });
   else if (v.startsWith('app:')) sendJSON({ t: 'audio-select', kind: 'app', pid: +v.slice(4) });
@@ -725,7 +759,7 @@ function audioOff() {
 async function onAudioState(m) {
   if (m.kind === 'none') return;
   if (!m.ok) {
-    $('audioInfo').innerHTML = `<span class="bad">Звук: ${esc(m.error || 'ошибка')}</span>`;
+    $('audioInfo').innerHTML = `<span class="bad">${L('Звук', 'Audio')}: ${esc(m.error || L('ошибка', 'error'))}</span>`;
     if (aenc) { try { aenc.close(); } catch {} aenc = null; }
     if (audioOn) sendJSON({ t: 'audio', on: false });
     audioOn = false;
@@ -734,14 +768,14 @@ async function onAudioState(m) {
   if (!running) { sendJSON({ t: 'audio-select', kind: 'none' }); return; }
   if (await setupAudioEncoder()) {
     const o = $('audioSrc').selectedOptions[0];
-    $('audioInfo').innerHTML = `<span class="ok">Передаётся:</span> ${esc(o ? o.textContent : m.desc)}. Клиенту нужно нажать «Включить звук».`;
+    $('audioInfo').innerHTML = `<span class="ok">${L('Передаётся:', 'Sending:')}</span> ${esc(o ? o.textContent : m.desc)}. ${L('Клиенту нужно нажать «Включить звук».', 'The client needs to tap «Turn sound on».')}`;
   }
 }
 
 async function setupAudioEncoder() {
-  if (!('AudioEncoder' in window)) { $('audioInfo').innerHTML = '<span class="bad">Браузер не умеет кодировать звук. Обновите Edge/Chrome.</span>'; return false; }
+  if (!('AudioEncoder' in window)) { $('audioInfo').innerHTML = `<span class="bad">${L('Браузер не умеет кодировать звук. Обновите Edge/Chrome.', 'The browser cannot encode audio. Update Edge/Chrome.')}</span>`; return false; }
   const cfg = { codec: 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: +$('abitrate').value };
-  try { const r = await AudioEncoder.isConfigSupported(cfg); if (!r.supported) throw new Error('Opus не поддерживается'); }
+  try { const r = await AudioEncoder.isConfigSupported(cfg); if (!r.supported) throw new Error(L('Opus не поддерживается', 'Opus is not supported')); }
   catch (e) { $('audioInfo').innerHTML = `<span class="bad">${esc(e.message)}</span>`; return false; }
   if (aenc && aenc.state !== 'closed') { try { aenc.close(); } catch {} }
   aenc = new AudioEncoder({
@@ -757,7 +791,7 @@ async function setupAudioEncoder() {
       chunk.copyTo(new Uint8Array(buf, 9));
       ws.send(buf);
     },
-    error: e => { $('audioInfo').innerHTML = `<span class="bad">Кодер звука: ${esc(e.message)}</span>`; setTimeout(() => running && audioWanted !== 'none' && setupAudioEncoder(), 500); },
+    error: e => { $('audioInfo').innerHTML = `<span class="bad">${L('Кодер звука', 'Audio encoder')}: ${esc(e.message)}</span>`; setTimeout(() => running && audioWanted !== 'none' && setupAudioEncoder(), 500); },
   });
   aenc.configure(cfg);
   audioOn = true;
@@ -801,8 +835,8 @@ function chooseMode(m) {
   // Предупредить, только если кто-то реально отключится
   const lose = m === 'lan' ? viewerList.filter(v => !v.lan).length : m === 'internet' ? viewerList.filter(v => v.lan).length : 0;
   if (lose && !confirm(m === 'lan'
-      ? `Оставить только трансляцию внутри сети? Отключатся смотрящие через интернет: ${lose}.`
-      : `Оставить только трансляцию через интернет? Отключатся телефоны в сети Wi-Fi: ${lose}.`)) {
+      ? L(`Оставить только трансляцию внутри сети? Отключатся смотрящие через интернет: ${lose}.`, `Keep only the Wi-Fi stream? Viewers watching over the internet will be disconnected: ${lose}.`)
+      : L(`Оставить только трансляцию через интернет? Отключатся телефоны в сети Wi-Fi: ${lose}.`, `Keep only the internet stream? Phones on Wi-Fi will be disconnected: ${lose}.`))) {
     document.querySelectorAll('input[name=mode]').forEach(r => r.checked = r.value === netMode);
     return;
   }
@@ -816,8 +850,8 @@ function chooseMode(m) {
 function showModePanels() {
   $('netPanel').style.display = netMode === 'lan' ? 'none' : '';
   $('lanPanel').style.display = netMode === 'internet' ? 'none' : '';
-  $('netPanel').querySelector('h2').textContent = netMode === 'both' ? 'Ссылка через интернет — для удалённых' : 'Ссылка для клиента';
-  $('lanPanel').querySelector('h2').textContent = netMode === 'both' ? 'Ссылка в Wi-Fi — для тех, кто рядом' : 'Ссылка в сети Wi-Fi';
+  $('netPanel').querySelector('h2').textContent = netMode === 'both' ? L('Ссылка через интернет — для удалённых', 'Internet link — for remote viewers') : L('Ссылка для клиента', 'Link for the client');
+  $('lanPanel').querySelector('h2').textContent = netMode === 'both' ? L('Ссылка в Wi-Fi — для тех, кто рядом', 'Wi-Fi link — for people in the room') : L('Ссылка в сети Wi-Fi', 'Wi-Fi link');
 }
 showModePanels();
 
@@ -837,8 +871,8 @@ $('qr').onclick = () => { $('qrBig').style.display = 'flex'; };
 $('qrBig').onclick = () => { $('qrBig').style.display = 'none'; };
 $('btnLanCopy').onclick = async () => {
   try { await navigator.clipboard.writeText($('lanLink').value); } catch { $('lanLink').select(); document.execCommand('copy'); }
-  $('btnLanCopy').textContent = 'Скопировано';
-  setTimeout(() => $('btnLanCopy').textContent = 'Копировать', 1500);
+  $('btnLanCopy').textContent = L('Скопировано', 'Copied');
+  setTimeout(() => $('btnLanCopy').textContent = L('Копировать', 'Copy'), 1500);
 };
 
 function renderLan(s) {
@@ -853,16 +887,19 @@ function renderLan(s) {
   showLanLink();
   if (s.mode !== 'internet' && !links.length) {
     $('lanInfo').innerHTML = s.lanError ? `<span class="bad">${esc(s.lanError)}</span>`
-      : '<span class="bad">Компьютер не подключён к локальной сети (Wi-Fi или кабель).</span>';
+      : `<span class="bad">${L('Компьютер не подключён к локальной сети (Wi-Fi или кабель).', 'This PC is not connected to a local network (Wi-Fi or cable).')}</span>`;
   } else {
-    $('lanInfo').innerHTML = 'Видео идёт напрямую по Wi-Fi, без интернета: задержка около 0,1 с. Телефоны должны быть в той же сети, что и компьютер.' +
-      '<br>При первом включении Windows спросит разрешение для GradeStream — нажми «Разрешить».' +
-      (links.length > 1 ? '<br>Адресов несколько — выбери тот, что относится к Wi-Fi, к которой подключены телефоны.' : '');
+    $('lanInfo').innerHTML = L('Видео идёт напрямую по Wi-Fi, без интернета: задержка около 0,1 с. Телефоны должны быть в той же сети, что и компьютер.', 'Video goes directly over Wi-Fi, no internet: about 0.1 s latency. Phones must be on the same network as this PC.') +
+      '<br>' + L('При первом включении Windows спросит разрешение для GradeStream — нажми «Разрешить».', 'The first time, Windows asks to allow GradeStream — click «Allow».') +
+      (links.length > 1 ? '<br>' + L('Адресов несколько — выбери тот, что относится к Wi-Fi, к которой подключены телефоны.', 'There are several addresses — pick the one on the Wi-Fi the phones are connected to.') : '');
   }
   $('lanWarn').textContent = s.lanWarn || '';
 }
 
+let lastState = null;
 function renderState(s) {
+  lastState = s;
+  if (s.lang && s.lang !== LANG) { setLangUI(s.lang, true); return; }
   if (s.mode && s.mode !== netMode) {   // программа помнит режим с прошлого запуска
     netMode = s.mode;
     try { localStorage.setItem('gs.mode', netMode); } catch {}
@@ -873,23 +910,23 @@ function renderState(s) {
   renderLan(s);
   if (s.link) {
     $('link').value = s.link; $('btnCopy').disabled = false;
-    $('tunnelInfo').innerHTML = '<span class="ok">Ссылка работает.</span> Действует, пока открыта программа. Отправь её клиенту в WhatsApp.';
+    $('tunnelInfo').innerHTML = `<span class="ok">${L('Ссылка работает.', 'The link is live.')}</span> ${L('Действует, пока открыта программа. Отправь её клиенту в WhatsApp.', 'It works while the app is open. Send it to the client, e.g. in WhatsApp.')}`;
   } else {
     $('link').value = ''; $('btnCopy').disabled = true;
-    $('tunnelInfo').innerHTML = s.tunnel === 'starting' ? 'Поднимаю защищённый туннель Cloudflare… (обычно 5–15 секунд)'
-      : s.tunnel === 'off' ? 'Туннель выключен.'
-      : `<span class="bad">${s.tunnelError || 'Туннель недоступен'}</span>`;
+    $('tunnelInfo').innerHTML = s.tunnel === 'starting' ? L('Поднимаю защищённый туннель Cloudflare… (обычно 5–15 секунд)', 'Starting a secure Cloudflare tunnel… (usually 5–15 seconds)')
+      : s.tunnel === 'off' ? L('Туннель выключен.', 'The tunnel is off.')
+      : `<span class="bad">${s.tunnelError || L('Туннель недоступен', 'Tunnel unavailable')}</span>`;
   }
   viewerList = s.viewers || [];
   $('vcount').textContent = viewerList.length;
-  if (!viewerList.length) { $('viewers').className = 'muted'; $('viewers').textContent = 'пока никого'; return; }
+  if (!viewerList.length) { $('viewers').className = 'muted'; $('viewers').textContent = L('пока никого', 'nobody yet'); return; }
   $('viewers').className = '';
   $('viewers').innerHTML = viewerList.map(v => {
-    let st = running ? `${(v.kbps / 1000).toFixed(1)} Мбит/с` : 'ждёт начала трансляции';
-    if (v.lan) st = (v.rtc ? 'Wi-Fi напрямую · ' : '<span class="warn">соединяется по Wi-Fi…</span> · ') + st;
-    else if (netMode === 'both') st = 'через интернет · ' + st;
-    if (running && !v.lan && v.drops > 0 && v.queue > 20) st += ' · <span class="warn">интернет клиента не успевает — снизь битрейт</span>';
-    if (running && audioOn && !v.lan) st += v.audio ? ' · звук включён' + (v.pcm ? ' (облегчённый)' : '') : ' · звук не включил';
+    let st = running ? `${(v.kbps / 1000).toFixed(1)} ${L('Мбит/с', 'Mbit/s')}` : L('ждёт начала трансляции', 'waiting for the stream');
+    if (v.lan) st = (v.rtc ? L('Wi-Fi напрямую · ', 'Wi-Fi direct · ') : `<span class="warn">${L('соединяется по Wi-Fi…', 'connecting over Wi-Fi…')}</span> · `) + st;
+    else if (netMode === 'both') st = L('через интернет · ', 'via internet · ') + st;
+    if (running && !v.lan && v.drops > 0 && v.queue > 20) st += ` · <span class="warn">${L('интернет клиента не успевает — снизь битрейт', 'the client’s connection can’t keep up — lower the bitrate')}</span>`;
+    if (running && audioOn && !v.lan) st += v.audio ? L(' · звук включён', ' · sound on') + (v.pcm ? L(' (облегчённый)', ' (light)') : '') : L(' · звук не включил', ' · sound not turned on');
     return `<div class="viewer"><b>${v.dev}</b> · ${st}</div>`;
   }).join('');
 }
@@ -912,18 +949,18 @@ function fillMonitors(list) {
   monitors = list;
   const sel = $('ovMon');
   if (surface !== 'monitor') {
-    sel.innerHTML = '<option value="-1">— захвачен не весь экран —</option>';
-    $('ovInfo').innerHTML = '<span class="warn">Метки поверх экрана работают, когда выбран «Весь экран». Сейчас захвачено окно — метки видны только в превью.</span>';
+    sel.innerHTML = `<option value="-1">${L('— захвачен не весь экран —', '— not an entire screen —')}</option>`;
+    $('ovInfo').innerHTML = `<span class="warn">${L('Метки поверх экрана работают, когда выбран «Весь экран». Сейчас захвачено окно — метки видны только в превью.', 'On-screen markers work when «Entire screen» is captured. A window is captured now — markers show only in the preview.')}</span>`;
     return;
   }
-  sel.innerHTML = list.map(m => `<option value="${m.index}">Монитор ${m.index + 1}: ${m.w}×${m.h}${m.primary ? ' (основной)' : ''}${m.w === srcW && m.h === srcH ? ' — совпадает с захватом' : ''}</option>`).join('');
+  sel.innerHTML = list.map(m => `<option value="${m.index}">${L('Монитор', 'Monitor')} ${m.index + 1}: ${m.w}×${m.h}${m.primary ? L(' (основной)', ' (primary)') : ''}${m.w === srcW && m.h === srcH ? L(' — совпадает с захватом', ' — matches the capture') : ''}</option>`).join('');
   const match = list.filter(m => m.w === srcW && m.h === srcH);
   let saved = null; try { saved = localStorage.getItem(monKey()); } catch {}
   if (saved !== null && match.some(m => String(m.index) === saved)) sel.value = saved;
   else if (match.length === 1) sel.value = match[0].index;
-  else if (match.length > 1) { sel.value = match.find(m => !m.primary)?.index ?? match[0].index; $('ovInfo').innerHTML = '<span class="warn">Несколько мониторов с таким разрешением — проверь, что выбран тот, где Clean Feed.</span>'; return; }
-  else { $('ovInfo').innerHTML = '<span class="warn">Не нашёл монитор с разрешением захвата — выбери вручную.</span>'; return; }
-  $('ovInfo').textContent = 'Метки видишь только ты — Windows не пускает это окно в захват, клиенту они не уходят.';
+  else if (match.length > 1) { sel.value = match.find(m => !m.primary)?.index ?? match[0].index; $('ovInfo').innerHTML = `<span class="warn">${L('Несколько мониторов с таким разрешением — проверь, что выбран тот, где Clean Feed.', 'Several monitors have this resolution — check that the Clean Feed one is selected.')}</span>`; return; }
+  else { $('ovInfo').innerHTML = `<span class="warn">${L('Не нашёл монитор с разрешением захвата — выбери вручную.', 'No monitor matches the capture resolution — pick one manually.')}</span>`; return; }
+  $('ovInfo').textContent = L('Метки видишь только ты — Windows не пускает это окно в захват, клиенту они не уходят.', 'Only you see the markers — Windows keeps this window out of the capture, so they never reach the client.');
 }
 $('ovMon').onchange = () => { try { localStorage.setItem(monKey(), $('ovMon').value); } catch {} };
 $('btnClearMarks').onclick = () => { sendJSON({ t: 'overlay-clear' }); document.querySelectorAll('.stage .mark').forEach(e => e.remove()); };
@@ -957,22 +994,35 @@ function showMark(m) {
   if (list.classList.contains('muted')) { list.classList.remove('muted'); list.innerHTML = ''; }
   const row = document.createElement('div');
   const time = new Date().toLocaleTimeString('ru-RU');
-  row.textContent = `${time} · ${m.dev || ''} · точка ${Math.round(x * OUT_W)}, ${Math.round(y * OUT_H)}` + (m.text ? ` — ${m.text}` : '');
+  row.textContent = `${time} · ${m.dev || ''} · ${L('точка', 'point')} ${Math.round(x * OUT_W)}, ${Math.round(y * OUT_H)}` + (m.text ? ` — ${m.text}` : '');
   list.prepend(row);
   if ($('snapOn').checked && running) {
     saveSnapshot(m, x, y).then(j => {
       const a = document.createElement('span');
-      a.className = 'ok'; a.textContent = `  · снимок №${j.n} сохранён`;
+      a.className = 'ok'; a.textContent = L(`  · снимок №${j.n} сохранён`, `  · screenshot #${j.n} saved`);
       row.appendChild(a);
       $('btnSummary').disabled = false;
       $('snapPath').textContent = j.dir;
     }).catch(e => {
       const a = document.createElement('span');
-      a.className = 'bad'; a.textContent = '  · снимок не сохранён: ' + e.message;
+      a.className = 'bad'; a.textContent = L('  · снимок не сохранён: ', '  · screenshot not saved: ') + e.message;
       row.appendChild(a);
     });
   }
 }
+
+// ---------- Смена языка без перезагрузки (трансляция не прерывается) ----------
+function refreshDynamic() {
+  setLive(); showModePanels(); showVerInfo();
+  if (codecRaw) { codecName = `${codecRaw} · ${codecHW ? L('аппаратный', 'hardware') : L('программный', 'software')}`; $('encInfo').textContent = `${L('Кодек', 'Codec')} H.264 ${codecName}`; }
+  if (mode && srcW) $('fmtInfo').textContent = `${L('Экран', 'Screen')} ${srcW}×${srcH} → ${MODE_NAMES()[mode]}`;
+  if (monitors.length) fillMonitors(monitors);
+  $('btnFS').textContent = document.fullscreenElement ? L('Выйти (Esc)', 'Exit (Esc)') : L('Во весь экран', 'Fullscreen');
+  sendJSON({ t: 'audio-list' });
+  if (lastState) renderState(lastState);
+  if ($('errBox').textContent) showBrowserProblem();
+}
+$('btnLang').onclick = () => setLangUI(LANG === 'en' ? 'ru' : 'en', false);
 
 // ---------- Превью во весь экран ----------
 function toggleFS() {
@@ -981,24 +1031,24 @@ function toggleFS() {
 }
 $('btnFS').onclick = e => { e.stopPropagation(); toggleFS(); };
 $('stage').addEventListener('dblclick', toggleFS);
-document.addEventListener('fullscreenchange', () => { $('btnFS').textContent = document.fullscreenElement ? 'Выйти (Esc)' : 'Во весь экран'; });
+document.addEventListener('fullscreenchange', () => { $('btnFS').textContent = document.fullscreenElement ? L('Выйти (Esc)', 'Exit (Esc)') : L('Во весь экран', 'Fullscreen'); });
 
 $('btnFolder').onclick = () => openFolder();
 
 // ---------- Папка для скриншотов ----------
 function showSnapFolder(j) {
-  if (!j.ok) { alert('Папка не выбрана: ' + j.error); return; }
+  if (!j.ok) { alert(L('Папка не выбрана: ', 'Folder not set: ') + j.error); return; }
   const sep = j.base.includes('\\') ? '\\' : '/';
-  $('snapPath').textContent = j.current || (j.subfolder ? j.base + sep + 'Сессия <дата время>' : j.base);
+  $('snapPath').textContent = j.current || (j.subfolder ? j.base + sep + L('Сессия <дата время>', 'Session <date time>') : j.base);
   $('snapSub').checked = j.subfolder;
   $('btnResetFolder').style.display = j.custom ? '' : 'none';
   if (!j.current) $('btnSummary').disabled = true;
 }
 function snapFolder(q) { return fetch(`/api/snap-folder?key=${KEY}` + (q ? '&' + q : '')).then(r => r.json()).then(showSnapFolder).catch(() => {}); }
 $('btnChoose').onclick = async () => {
-  $('btnChoose').disabled = true; $('btnChoose').textContent = 'Выбор папки…';
+  $('btnChoose').disabled = true; $('btnChoose').textContent = L('Выбор папки…', 'Choosing…');
   await snapFolder('action=choose');
-  $('btnChoose').disabled = false; $('btnChoose').textContent = 'Выбрать папку…';
+  $('btnChoose').disabled = false; $('btnChoose').textContent = L('Выбрать папку…', 'Choose folder…');
 };
 $('btnResetFolder').onclick = () => snapFolder('action=reset');
 $('snapSub').onchange = () => snapFolder('action=subfolder&on=' + ($('snapSub').checked ? 1 : 0));
@@ -1012,9 +1062,10 @@ $('snapOn').onchange = () => {
 
 $('btnCopy').onclick = async () => {
   try { await navigator.clipboard.writeText($('link').value); } catch { $('link').select(); document.execCommand('copy'); }
-  $('btnCopy').textContent = 'Скопировано';
-  setTimeout(() => $('btnCopy').textContent = 'Копировать', 1500);
+  $('btnCopy').textContent = L('Скопировано', 'Copied');
+  setTimeout(() => $('btnCopy').textContent = L('Копировать', 'Copy'), 1500);
 };
+setLive();   // подписи кнопок и состояния — на выбранном языке
 </script>
 </body>
 </html>

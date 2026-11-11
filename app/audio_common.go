@@ -171,7 +171,7 @@ func stopAudio() {
 func selectAudio(kind, id string, pid uint32) (string, error) {
 	stopAudio()
 	if kind == "none" || kind == "" {
-		return "без звука", nil
+		return L("без звука", "no audio"), nil
 	}
 	stop := make(chan struct{})
 	done := make(chan struct{})
@@ -179,13 +179,13 @@ func selectAudio(kind, id string, pid uint32) (string, error) {
 	var desc string
 	switch kind {
 	case "test":
-		desc = "тестовый сигнал 1 кГц"
+		desc = L("тестовый сигнал 1 кГц", "1 kHz test tone")
 		go testTone(stop, done, ready)
 	case "device":
-		desc = "устройство вывода"
+		desc = L("устройство вывода", "output device")
 		go captureDevice(id, stop, done, ready)
 	case "app":
-		desc = "приложение"
+		desc = L("приложение", "application")
 		go captureApp(pid, stop, done, ready)
 	default:
 		return "", errUnsupported

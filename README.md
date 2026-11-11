@@ -7,7 +7,7 @@ Windows 10/11 · free · MIT · [download the installer](https://github.com/usht
 
 <img src="docs/panel.png" width="360" align="right" alt="GradeStream panel: mode selector, internet link and Wi-Fi QR code">
 
-> The app interface is currently in Russian.
+> The interface is in English and Russian: the app follows the Windows language (switch with the RU/EN button), and the viewer page follows the language of the client's phone.
 
 ## Features
 
@@ -17,13 +17,13 @@ Windows 10/11 · free · MIT · [download the installer](https://github.com/usht
   - **Wi-Fi** — everyone in the same room; video goes directly over the local network, no internet needed, link and QR code shown on screen;
   - **Both** — both links at once.
 - **Always 1920×1080 out.** If the monitor isn't 1080p, the app offers a downscale (4K, 1440p), a 1:1 center crop for checking grain, a crop of the extra margins (1920×1200, ultrawide) or a fit with letterboxing. The choice is remembered per resolution.
-- **Client markers.** The client taps «Отметить точку» (Mark a point), taps the frame and types a comment. On your side:
+- **Client markers.** The client taps "Mark a point", taps the frame and types a comment. On your side:
   - the marker appears on top of your Clean Feed monitor (it is not part of the stream);
   - a PNG of the exact frame the client was looking at (latency-compensated) is saved with the marker and the comment;
-  - a `комментарии.html` summary with «Учтено» (Done) checkboxes and a `комментарии.txt` list are kept. You choose the folder.
+  - a `comments.html` summary with "Done" checkboxes and a `comments.txt` list are kept (in Russian Windows: `комментарии.html` / `.txt`). You choose the folder.
 - **Audio, optional:** no audio (all bandwidth goes to the picture), a whole Windows output device, or a single application (e.g. only Resolve).
 - **Quality:** 4–24 Mbit/s, 12/24/25/30/50/60 fps, pause (the client keeps the last frame).
-- **Conveniences:** fullscreen for the client and for your preview, a tray icon (show window, stop, exit), its own taskbar icon.
+- **Conveniences:** fullscreen for the client and for your preview, a tray icon (show window, stop, exit), its own taskbar icon, English and Russian interface.
 
 ## How it works
 
@@ -140,8 +140,8 @@ Requires Microsoft Edge (preinstalled on Windows) or Google Chrome — GradeStre
 ## Usage
 
 1. In Resolve: **Workspace → Video Clean Feed →** the monitor for the client.
-2. In GradeStream, choose a mode: «Интернет» (Internet), «Wi-Fi» or «Оба сразу» (Both).
-3. Click «Выбрать экран» (Choose screen) → "Entire screen" → the Clean Feed monitor. Keep the GradeStream window itself on another monitor.
+2. In GradeStream, choose a mode: "Internet", "Wi-Fi" or "Both".
+3. Click "Choose screen" → "Entire screen" → the Clean Feed monitor. Keep the GradeStream window itself on another monitor.
 4. Send the client the link, or show the QR code to people in the room.
 
 **Wi-Fi mode.**
@@ -186,7 +186,6 @@ The script downloads the official cloudflared, verifies Cloudflare's signature, 
 - One monitor or one window is streamed.
 - 8-bit SDR, 1080p output only.
 - On-screen markers require Windows 10 2004+ and "Entire screen" capture. If Resolve shows the Clean Feed in exclusive fullscreen, the marker overlay can't appear on top of it.
-- The interface is in Russian.
 
 ## License
 

@@ -21,7 +21,7 @@ import (
 	"unsafe"
 )
 
-var errUnsupported = errors.New("неизвестный источник звука")
+var errUnsupported = errors.New("unknown audio source")
 
 type GUID struct {
 	Data1 uint32
@@ -92,7 +92,7 @@ func release(obj uintptr) {
 
 func hrErr(r uintptr, what string) error {
 	if int32(r) < 0 {
-		return fmt.Errorf("%s: код 0x%08X", what, uint32(r))
+		return fmt.Errorf("%s: 0x%08X", what, uint32(r))
 	}
 	return nil
 }
@@ -199,7 +199,7 @@ func listAudioApps() ([]AudioApp, error) {
 	hideWindow(cmd)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("список приложений: %v", err)
+		return nil, fmt.Errorf(L("список приложений: %v", "app list: %v"), err)
 	}
 	s := strings.TrimSpace(string(out))
 	apps := []AudioApp{}
@@ -210,7 +210,7 @@ func listAudioApps() ([]AudioApp, error) {
 		s = "[" + s + "]"
 	}
 	if err := json.Unmarshal([]byte(s), &apps); err != nil {
-		return nil, fmt.Errorf("список приложений: %v", err)
+		return nil, fmt.Errorf(L("список приложений: %v", "app list: %v"), err)
 	}
 	filtered := apps[:0]
 	for _, a := range apps {
@@ -325,10 +325,10 @@ func captureDevice(id string, stop, done chan struct{}, ready chan error) {
 	defer release(en)
 	var dev uintptr
 	if id == "" {
-		err = hrErr(vcall(en, 4, 0, 1, uintptr(unsafe.Pointer(&dev))), "устройство по умолчанию")
+		err = hrErr(vcall(en, 4, 0, 1, uintptr(unsafe.Pointer(&dev))), L("устройство по умолчанию", "default device"))
 	} else {
 		idp, _ := syscall.UTF16PtrFromString(id)
-		err = hrErr(vcall(en, 5, uintptr(unsafe.Pointer(idp)), uintptr(unsafe.Pointer(&dev))), "устройство не найдено")
+		err = hrErr(vcall(en, 5, uintptr(unsafe.Pointer(idp)), uintptr(unsafe.Pointer(&dev))), L("устройство не найдено", "device not found"))
 	}
 	if err != nil {
 		fail(err)
@@ -375,7 +375,7 @@ func captureDevice(id string, stop, done chan struct{}, ready chan error) {
 		case <-t.C:
 		}
 		if err := drain(capt, f, rs); err != nil {
-			hub.sendHost(map[string]any{"t": "audio-state", "ok": false, "error": "Устройство отключилось: " + err.Error()})
+			hub.sendHost(map[string]any{"t": "audio-state", "ok": false, "error": L("Устройство отключилось: ", "Device disconnected: ") + err.Error()})
 			return
 		}
 	}
@@ -427,11 +427,11 @@ func captureApp(pid uint32, stop, done chan struct{}, ready chan error) {
 	defer fin()
 	fail := func(err error) { ready <- err }
 	if pid == 0 {
-		fail(errors.New("не выбрано приложение"))
+		fail(errors.New(L("не выбрано приложение", "no application selected")))
 		return
 	}
 	if procActivateAsync.Find() != nil {
-		fail(errors.New("звук отдельного приложения требует Windows 10 версии 2004 или новее"))
+		fail(errors.New(L("звук отдельного приложения требует Windows 10 версии 2004 или новее", "per-application audio requires Windows 10 version 2004 or later")))
 		return
 	}
 	initHandler()
@@ -464,13 +464,13 @@ func captureApp(pid uint32, stop, done chan struct{}, ready chan error) {
 	select {
 	case <-activateCh:
 	case <-time.After(5 * time.Second):
-		fail(errors.New("Windows не ответила на запрос захвата звука приложения"))
+		fail(errors.New(L("Windows не ответила на запрос захвата звука приложения", "Windows did not respond to the application audio capture request")))
 		return
 	}
 	var hrAct uintptr
 	var unk uintptr
 	vcall(op, 3, uintptr(unsafe.Pointer(&hrAct)), uintptr(unsafe.Pointer(&unk)))
-	if err := hrErr(uintptr(uint32(hrAct)), "активация звука приложения"); err != nil {
+	if err := hrErr(uintptr(uint32(hrAct)), L("активация звука приложения", "application audio activation")); err != nil {
 		fail(err)
 		return
 	}
@@ -493,7 +493,7 @@ func captureApp(pid uint32, stop, done chan struct{}, ready chan error) {
 	binary.LittleEndian.PutUint16(wfx[14:], 16)
 	f := wfmt{tag: 1, channels: 2, rate: 48000, bits: 16, block: 4}
 	r = vcall(client, 3, 0, streamLoopback|streamEventCB|streamAutoConvert|streamSrcQuality, 2000000, 0, uintptr(unsafe.Pointer(&wfx[0])), 0)
-	if err := hrErr(r, "Initialize (приложение)"); err != nil {
+	if err := hrErr(r, "Initialize (application)"); err != nil {
 		fail(err)
 		return
 	}
@@ -528,7 +528,7 @@ func captureApp(pid uint32, stop, done chan struct{}, ready chan error) {
 		}
 		procWaitSingle.Call(evt, 100)
 		if err := drain(capt, f, rs); err != nil {
-			hub.sendHost(map[string]any{"t": "audio-state", "ok": false, "error": "Приложение закрыто или звук недоступен: " + err.Error()})
+			hub.sendHost(map[string]any{"t": "audio-state", "ok": false, "error": L("Приложение закрыто или звук недоступен: ", "Application closed or audio unavailable: ") + err.Error()})
 			return
 		}
 	}

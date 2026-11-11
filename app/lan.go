@@ -153,7 +153,7 @@ func startLAN() error {
 		break
 	}
 	if lanMux == nil {
-		lanErr = "не удалось открыть порт в локальной сети: " + fmt.Sprint(err)
+		lanErr = L("не удалось открыть порт в локальной сети: ", "could not open a port on the local network: ") + fmt.Sprint(err)
 		return errors.New(lanErr)
 	}
 	if err := setupLanAPI(); err != nil {
@@ -260,7 +260,7 @@ func newLanPeer(v *Viewer) (*lanPeer, error) {
 	api, on := lanAPI, lanOn
 	lanMu.Unlock()
 	if !on || api == nil {
-		return nil, errors.New("режим внутри сети выключен")
+		return nil, errors.New(L("режим внутри сети выключен", "Wi-Fi mode is off"))
 	}
 	pc, err := api.NewPeerConnection(webrtc.Configuration{}) // без STUN — только локальная сеть
 	if err != nil {

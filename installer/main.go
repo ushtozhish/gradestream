@@ -23,7 +23,7 @@ import (
 
 const (
 	appName    = "GradeStream"
-	appVersion = "2.9.0"
+	appVersion = "2.10.0"
 	publisher  = "GradeStream"
 	regPath    = `Software\Microsoft\Windows\CurrentVersion\Uninstall\GradeStream`
 )
@@ -135,7 +135,7 @@ func registerUninstall(dir string, sizeKB uint32) error {
 		{"UninstallString", `"` + un + `" /uninstall`},
 		{"QuietUninstallString", `"` + un + `" /uninstall /quiet`},
 		{"InstallDate", time.Now().Format("20060102")},
-		{"Comments", "Трансляция Clean Feed клиенту по ссылке"},
+		{"Comments", L("Трансляция Clean Feed клиенту по ссылке", "Stream a Clean Feed to a client via a link")},
 	} {
 		if err := regSetStr(h, kv[0], kv[1]); err != nil {
 			return err
@@ -171,24 +171,25 @@ foreach ($folder in @([Environment]::GetFolderPath('Programs'), [Environment]::G
 func install(quiet bool) {
 	dir := installDir()
 	if !quiet {
-		msg := fmt.Sprintf("Установить %s %s?\n\nПапка: %s\nПрава администратора не нужны.\n\nПрограмма появится в меню «Пуск», на рабочем столе и в списке установленных приложений Windows.", appName, appVersion, dir)
+		msg := fmt.Sprintf(L("Установить %s %s?\n\nПапка: %s\nПрава администратора не нужны.\n\nПрограмма появится в меню «Пуск», на рабочем столе и в списке установленных приложений Windows.",
+			"Install %s %s?\n\nFolder: %s\nNo administrator rights needed.\n\nThe app will appear in the Start menu, on the desktop and in Windows Installed apps."), appName, appVersion, dir)
 		if box(msg, mbYesNo|mbIconQuest) != idYes {
 			return
 		}
 	}
 	if os.Getenv("LOCALAPPDATA") == "" {
-		box("Не найдена папка LOCALAPPDATA.", mbIconError)
+		box(L("Не найдена папка LOCALAPPDATA.", "LOCALAPPDATA folder not found."), mbIconError)
 		return
 	}
 	stopRunning(dir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		box("Не удалось создать папку:\n"+err.Error(), mbIconError)
+		box(L("Не удалось создать папку:\n", "Could not create the folder:\n")+err.Error(), mbIconError)
 		return
 	}
 	self, _ := os.Executable()
 	selfBytes, err := os.ReadFile(self)
 	if err != nil {
-		box("Не удалось прочитать установщик:\n"+err.Error(), mbIconError)
+		box(L("Не удалось прочитать установщик:\n", "Could not read the installer:\n")+err.Error(), mbIconError)
 		return
 	}
 	files := map[string][]byte{
@@ -212,22 +213,22 @@ func install(quiet bool) {
 			time.Sleep(500 * time.Millisecond)
 		}
 		if werr != nil {
-			box("Не удалось записать "+name+":\n"+werr.Error()+"\n\nЗакройте GradeStream и попробуйте снова.", mbIconError)
+			box(L("Не удалось записать ", "Could not write ")+name+":\n"+werr.Error()+L("\n\nЗакройте GradeStream и попробуйте снова.", "\n\nClose GradeStream and try again."), mbIconError)
 			return
 		}
 		total += int64(len(data))
 	}
 	if err := registerUninstall(dir, uint32(total/1024)); err != nil {
-		box("Программа скопирована, но не зарегистрирована в Windows:\n"+err.Error(), mbIconError)
+		box(L("Программа скопирована, но не зарегистрирована в Windows:\n", "The app was copied but not registered in Windows:\n")+err.Error(), mbIconError)
 	}
 	exe := filepath.Join(dir, "GradeStream.exe")
 	if err := ps(shortcutPS, "GS_EXE="+exe, "GS_DIR="+dir); err != nil {
-		box("Не удалось создать ярлыки (программу можно запускать из папки установки):\n"+err.Error(), mbIconError)
+		box(L("Не удалось создать ярлыки (программу можно запускать из папки установки):\n", "Could not create shortcuts (you can run the app from its install folder):\n")+err.Error(), mbIconError)
 	}
 	if quiet {
 		return
 	}
-	if box(appName+" установлен.\n\nЗапустить сейчас?", mbYesNo|mbIconInfo) == idYes {
+	if box(appName+L(" установлен.\n\nЗапустить сейчас?", " is installed.\n\nLaunch it now?"), mbYesNo|mbIconInfo) == idYes {
 		c := exec.Command(exe)
 		c.Dir = dir
 		c.Start()
@@ -238,7 +239,7 @@ func install(quiet bool) {
 
 func uninstall(quiet bool) {
 	dir := installDir()
-	if !quiet && box("Удалить "+appName+" с этого компьютера?", mbYesNo|mbIconQuest) != idYes {
+	if !quiet && box(L("Удалить ", "Remove ")+appName+L(" с этого компьютера?", " from this computer?"), mbYesNo|mbIconQuest) != idYes {
 		return
 	}
 	stopRunning(dir)
@@ -252,7 +253,7 @@ func uninstall(quiet bool) {
 	// uninstall.exe сейчас запущен — удаляем его и папку чуть позже
 	hidden(exec.Command("cmd.exe", "/c", "ping 127.0.0.1 -n 3 >nul & rmdir /s /q \""+dir+"\"")).Start()
 	if !quiet {
-		box(appName+" удалён.", mbOK|mbIconInfo)
+		box(appName+L(" удалён.", " has been removed."), mbOK|mbIconInfo)
 	}
 }
 
@@ -270,4 +271,21 @@ func main() {
 		return
 	}
 	install(quiet)
+}
+
+// Язык окон установщика — по языку интерфейса Windows
+var ruUI = func() bool {
+	id, _, _ := syscall.NewLazyDLL("kernel32.dll").NewProc("GetUserDefaultUILanguage").Call()
+	switch id & 0x3ff {
+	case 0x19, 0x3f, 0x23, 0x22: // ru, kk, be, uk
+		return true
+	}
+	return false
+}()
+
+func L(ru, en string) string {
+	if ruUI {
+		return ru
+	}
+	return en
 }

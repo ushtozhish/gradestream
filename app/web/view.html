@@ -29,21 +29,27 @@
 <body>
 <canvas id="c" width="1920" height="1080"></canvas>
 <video id="lv" muted autoplay playsinline disablepictureinpicture></video>
-<div id="status">Подключаюсь…</div>
-<div id="hint">Коснитесь места на кадре</div>
-<div id="pause">Пауза</div>
+<div id="status" data-en="Connecting…">Подключаюсь…</div>
+<div id="hint" data-en="Tap a spot on the frame">Коснитесь места на кадре</div>
+<div id="pause" data-en="Paused">Пауза</div>
 <div id="info"></div>
 <div id="note"></div>
 <div id="bar">
-  <button id="btnSound" style="display:none">Включить звук</button>
-  <button id="btnMark">Отметить точку</button>
-  <button id="btnFull" style="display:none">На весь экран</button>
+  <button id="btnSound" style="display:none" data-en="Turn sound on">Включить звук</button>
+  <button id="btnMark" data-en="Mark a point">Отметить точку</button>
+  <button id="btnFull" style="display:none" data-en="Fullscreen">На весь экран</button>
   <button id="btnInfo">i</button>
-  <button id="btnHide">Скрыть</button>
+  <button id="btnHide" data-en="Hide">Скрыть</button>
 </div>
 
 <script>
 const ROOM = '__ROOM__';
+// Язык страницы — по языку телефона зрителя
+const LANG = ['ru', 'kk', 'be', 'uk'].includes((navigator.language || '').slice(0, 2)) ? 'ru' : 'en';
+const L = (ru, en) => LANG === 'en' ? en : ru;
+document.documentElement.lang = LANG;
+if (LANG === 'en') document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
+document.title = L('Просмотр цветокоррекции', 'Color grading preview');
 const LAN = __LAN__;   // открыто по ссылке внутри сети: видео приходит по WebRTC напрямую по Wi-Fi
 const $ = id => document.getElementById(id);
 const canvas = $('c');
@@ -60,10 +66,10 @@ function note(t) { $('note').textContent = t; $('note').style.display = 'block';
 if (LAN) {
   canvas.style.display = 'none';
   $('lv').style.display = 'block';
-  if (!('RTCPeerConnection' in window)) status('Этот браузер не умеет принимать видео по сети. Откройте ссылку в Safari (iPhone) или Chrome (Android).');
+  if (!('RTCPeerConnection' in window)) status(L('Этот браузер не умеет принимать видео по сети. Откройте ссылку в Safari (iPhone) или Chrome (Android).', 'This browser cannot receive video over the network. Open the link in Safari (iPhone) or Chrome (Android).'));
   else connect();
 } else if (!('VideoDecoder' in window)) {
-  status('Этот браузер слишком старый для просмотра. На iPhone обновите iOS до 16.4 или новее и откройте ссылку в Safari. На Android — в Chrome.');
+  status(L('Этот браузер слишком старый для просмотра. На iPhone обновите iOS до 16.4 или новее и откройте ссылку в Safari. На Android — в Chrome.', 'This browser is too old. On iPhone, update to iOS 16.4 or later and open the link in Safari. On Android, use Chrome.'));
 } else {
   connect();
 }
@@ -73,8 +79,8 @@ function connect() {
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => { retry = 0; };
   ws.onclose = () => {
-    status(gotFrame ? '' : 'Нет связи, переподключаюсь…');
-    if (gotFrame) note('Связь прервалась, переподключаюсь…');
+    status(gotFrame ? '' : L('Нет связи, переподключаюсь…', 'No connection, reconnecting…'));
+    if (gotFrame) note(L('Связь прервалась, переподключаюсь…', 'Connection lost, reconnecting…'));
     setTimeout(connect, Math.min(5000, 500 * ++retry));
   };
   ws.onmessage = e => {
@@ -89,20 +95,20 @@ function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 function onText(m) {
   if (m.t === 'hello') {
-    live = m.live; if (!live) status('Трансляция ещё не началась. Ожидайте…');
+    live = m.live; if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…'));
     if (LAN) { startRTC(); return; }
     sendCaps();
     if (soundOn) send({ t: 'audio-want', on: true });
   }
   else if (m.t === 'rtc-offer') onRtcOffer(m);
   else if (m.t === 'rtc-ice') { if (pc && m.c) pc.addIceCandidate(m.c).catch(() => {}); }
-  else if (m.t === 'rtc-error') status('Не удалось начать показ: ' + m.error);
+  else if (m.t === 'rtc-error') status(L('Не удалось начать показ: ', 'Could not start playback: ') + m.error);
   else if (m.t === 'audio') { if (LAN) $('btnSound').style.display = m.on ? '' : 'none'; else onAudioConfig(m); }
   else if (m.t === 'config') { if (!LAN) setupDecoder(m); }
   else if (m.t === 'live') {
     live = m.on;
-    if (LAN) { $('lv').style.visibility = live ? 'visible' : 'hidden'; if (live) { $('lv').play().catch(() => {}); if (!gotFrame) status('Загружаю картинку…'); } }
-    if (!live) { if (!LAN) onAudioConfig({ on: false }); status('Трансляция остановлена'); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1920, 1080); }
+    if (LAN) { $('lv').style.visibility = live ? 'visible' : 'hidden'; if (live) { $('lv').play().catch(() => {}); if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…')); } }
+    if (!live) { if (!LAN) onAudioConfig({ on: false }); status(L('Трансляция остановлена', 'The stream has stopped')); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1920, 1080); }
   }
   else if (m.t === 'pause') $('pause').style.display = m.on ? 'block' : 'none';
 }
@@ -113,7 +119,7 @@ const lv = $('lv');
 function startRTC() {
   clearTimeout(rtcRetry);
   if (pc) { try { pc.close(); } catch {} pc = null; }
-  if (!live) status('Трансляция ещё не началась. Ожидайте…'); else status('Соединяюсь по Wi-Fi…');
+  if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…')); else status(L('Соединяюсь по Wi-Fi…', 'Connecting over Wi-Fi…'));
   send({ t: 'rtc-start' });
 }
 async function onRtcOffer(m) {
@@ -130,11 +136,11 @@ async function onRtcOffer(m) {
   p.onconnectionstatechange = () => {
     if (p !== pc) return;
     const st = p.connectionState;
-    if (st === 'connected') { if (!live) status('Трансляция ещё не началась. Ожидайте…'); }
+    if (st === 'connected') { if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…')); }
     else if (st === 'failed') {
-      status('Не получилось соединиться по Wi-Fi. Проверьте, что телефон в той же сети, что и компьютер (не гостевая сеть), и что на компьютере GradeStream разрешён в брандмауэре. Пробую снова…');
+      status(L('Не получилось соединиться по Wi-Fi. Проверьте, что телефон в той же сети, что и компьютер (не гостевая сеть), и что на компьютере GradeStream разрешён в брандмауэре. Пробую снова…', 'Could not connect over Wi-Fi. Make sure the phone is on the same network as the computer (not a guest network) and that GradeStream is allowed in the computer’s firewall. Retrying…'));
       rtcRetry = setTimeout(startRTC, 4000);
-    } else if (st === 'disconnected') note('Связь по Wi-Fi прерывается…');
+    } else if (st === 'disconnected') note(L('Связь по Wi-Fi прерывается…', 'The Wi-Fi connection is unstable…'));
   };
   try {
     await p.setRemoteDescription({ type: 'offer', sdp: m.sdp });
@@ -144,7 +150,7 @@ async function onRtcOffer(m) {
     if (opt) ans.sdp = ans.sdp.replace(new RegExp('(a=fmtp:' + opt + ' [^\\r\\n]*)'), (m0) => /stereo=1/.test(m0) ? m0 : m0 + ';stereo=1;sprop-stereo=1');
     await p.setLocalDescription(ans);
     send({ t: 'rtc-answer', sdp: p.localDescription.sdp });
-  } catch (e) { status('Ошибка соединения: ' + e.message); }
+  } catch (e) { status(L('Ошибка соединения: ', 'Connection error: ') + e.message); }
 }
 lv.addEventListener('playing', () => { if (live) { gotFrame = true; status(''); } });
 lv.addEventListener('resize', () => { if (live && lv.videoWidth) { gotFrame = true; status(''); } });
@@ -174,11 +180,11 @@ async function setupDecoder(m) {
   if (m.colorSpace) c.colorSpace = m.colorSpace;
   try {
     const s = await VideoDecoder.isConfigSupported(c);
-    if (!s.supported) { delete c.colorSpace; const s2 = await VideoDecoder.isConfigSupported(c); if (!s2.supported) { status('Устройство не может декодировать это видео (H.264 ' + m.codec + ').'); return; } }
+    if (!s.supported) { delete c.colorSpace; const s2 = await VideoDecoder.isConfigSupported(c); if (!s2.supported) { status(L('Устройство не может декодировать это видео (H.264 ', 'This device cannot decode this video (H.264 ') + m.codec + ').'); return; } }
   } catch {}
   cfg = c;
   resetDecoder();
-  if (!gotFrame) status('Загружаю картинку…');
+  if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…'));
 }
 
 function resetDecoder() {
@@ -285,8 +291,8 @@ function onPCM(buf) {
   const s16 = new Int16Array(buf.slice(9));
   const n = s16.length / 2;
   const b = actx.createBuffer(2, n, 24000);
-  const L = b.getChannelData(0), R = b.getChannelData(1);
-  for (let i = 0; i < n; i++) { L[i] = s16[2 * i] / 32768; R[i] = s16[2 * i + 1] / 32768; }
+  const chL = b.getChannelData(0), chR = b.getChannelData(1);
+  for (let i = 0; i < n; i++) { chL[i] = s16[2 * i] / 32768; chR[i] = s16[2 * i + 1] / 32768; }
   schedule(b);
 }
 
@@ -296,8 +302,8 @@ $('btnSound').onclick = async e => {
     soundOn = !soundOn;
     lv.muted = !soundOn;
     lv.play().catch(() => {});
-    if (soundOn) note('Звук включён. Если тихо — снимите iPhone с беззвучного режима');
-    $('btnSound').textContent = soundOn ? 'Звук: вкл' : 'Включить звук';
+    if (soundOn) note(L('Звук включён. Если тихо — снимите iPhone с беззвучного режима', 'Sound is on. If you hear nothing, turn off silent mode on the iPhone'));
+    $('btnSound').textContent = soundOn ? L('Звук: вкл', 'Sound: on') : L('Включить звук', 'Turn sound on');
     $('btnSound').classList.toggle('on', soundOn);
     return;
   }
@@ -312,12 +318,12 @@ $('btnSound').onclick = async e => {
     if (opusOK === null) await sendCaps();
     if (opusOK) setupAudioDecoder();
     send({ t: 'audio-want', on: true });
-    note('Звук включён. Если тихо — снимите iPhone с беззвучного режима');
+    note(L('Звук включён. Если тихо — снимите iPhone с беззвучного режима', 'Sound is on. If you hear nothing, turn off silent mode on the iPhone'));
   } else {
     send({ t: 'audio-want', on: false });
     closeDecoder();
   }
-  $('btnSound').textContent = soundOn ? 'Звук: вкл' : 'Включить звук';
+  $('btnSound').textContent = soundOn ? L('Звук: вкл', 'Sound: on') : L('Включить звук', 'Turn sound on');
   $('btnSound').classList.toggle('on', soundOn);
 };
 
@@ -339,15 +345,15 @@ function onTap(e) {
   const p = document.createElement('div');
   p.className = 'ping'; p.style.left = e.clientX + 'px'; p.style.top = e.clientY + 'px';
   document.body.appendChild(p); setTimeout(() => p.remove(), 1600);
-  const text = prompt('Комментарий к точке (можно оставить пустым):');
-  if (text !== null) { send(LAN ? { t: 'mark', x, y, text, lag: lagMs } : { t: 'mark', x, y, text, ts: shownTs }); note('Метка отправлена'); }
+  const text = prompt(L('Комментарий к точке (можно оставить пустым):', 'Comment for this point (optional):'));
+  if (text !== null) { send(LAN ? { t: 'mark', x, y, text, lag: lagMs } : { t: 'mark', x, y, text, ts: shownTs }); note(L('Метка отправлена', 'Marker sent')); }
   markMode = false; $('btnMark').classList.remove('on'); $('hint').style.display = 'none';
 }
 canvas.addEventListener('click', onTap);
 lv.addEventListener('click', onTap);
 
 // ---------- Интерфейс ----------
-$('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note('Коснитесь экрана, чтобы вернуть кнопки'); };
+$('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons')); };
 $('btnInfo').onclick = e => { e.stopPropagation(); const i = $('info'); i.style.display = i.style.display === 'block' ? 'none' : 'block'; };
 // ---------- Во весь экран ----------
 // Android, iPad, компьютер — полноэкранный режим страницы (метки остаются доступны).
@@ -374,22 +380,22 @@ $('btnFull').onclick = e => {
     const p = (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl);
     if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch {} }).catch(() => {});
     $('bar').classList.add('hidden');
-    note('Коснитесь экрана, чтобы вернуть кнопки');
+    note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons'));
     return;
   }
   if (!LAN) ensureFsVideo();
   const fv = LAN ? lv : fsVideo;
   if (fv && fv.webkitEnterFullscreen) {
     fv.play().catch(() => {});
-    try { fv.webkitEnterFullscreen(); } catch { note('Поверните телефон горизонтально'); }
-  } else note('Поверните телефон горизонтально — картинка займёт весь экран');
+    try { fv.webkitEnterFullscreen(); } catch { note(L('Поверните телефон горизонтально', 'Turn the phone sideways')); }
+  } else note(L('Поверните телефон горизонтально — картинка займёт весь экран', 'Turn the phone sideways — the picture will fill the screen'));
 };
-document.addEventListener('fullscreenchange', () => { $('btnFull').textContent = document.fullscreenElement ? 'Свернуть' : 'На весь экран'; });
+document.addEventListener('fullscreenchange', () => { $('btnFull').textContent = document.fullscreenElement ? L('Свернуть', 'Exit fullscreen') : L('На весь экран', 'Fullscreen'); });
 
 setInterval(() => {
   $('info').textContent = LAN
-    ? `Wi-Fi напрямую · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} к/с · ${rxMbps.toFixed(1)} Мбит/с · задержка ~${lagMs} мс`
-    : `1920×1080 · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`;
+    ? L(`Wi-Fi напрямую · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} к/с · ${rxMbps.toFixed(1)} Мбит/с · задержка ~${lagMs} мс`, `Wi-Fi direct · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} fps · ${rxMbps.toFixed(1)} Mbit/s · latency ~${lagMs} ms`)
+    : L(`1920×1080 · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`, `1920×1080 · ${frames} fps · ${(bytes * 8 / 1e6).toFixed(1)} Mbit/s`);
   frames = 0; bytes = 0;
 }, 1000);
 

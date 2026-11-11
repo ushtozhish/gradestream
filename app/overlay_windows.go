@@ -300,7 +300,7 @@ func ensureOverlay() error {
 		ovReady <- err // оставить для следующих вызовов
 		return err
 	case <-time.After(3 * time.Second):
-		return errors.New("окно меток не создалось")
+		return errors.New(L("окно меток не создалось", "the marker window was not created"))
 	}
 }
 
@@ -312,12 +312,12 @@ func overlayShow(monIdx int, x, y int32, text string, ttl time.Duration) error {
 	ovMu.Lock()
 	if !ovExclude {
 		ovMu.Unlock()
-		return errors.New("эта версия Windows не умеет прятать окно от захвата — метки поверх экрана выключены, чтобы клиент их не увидел (нужна Windows 10 2004+)")
+		return errors.New(L("эта версия Windows не умеет прятать окно от захвата — метки поверх экрана выключены, чтобы клиент их не увидел (нужна Windows 10 2004+)", "this Windows version cannot hide a window from capture — on-screen markers are off so the client never sees them (requires Windows 10 2004+)"))
 	}
 	ovMu.Unlock()
 	mons := listMonitors()
 	if monIdx < 0 || monIdx >= len(mons) {
-		return errors.New("монитор не найден")
+		return errors.New(L("монитор не найден", "monitor not found"))
 	}
 	m := mons[monIdx]
 	ovMu.Lock()

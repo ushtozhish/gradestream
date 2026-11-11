@@ -56,7 +56,7 @@ func folderDialog(owner uintptr, title, start string) (string, error) {
 	if t, err := syscall.UTF16PtrFromString(title); err == nil {
 		vcall(dlg, 17, uintptr(unsafe.Pointer(t)))
 	}
-	if ok, err := syscall.UTF16PtrFromString("Сохранять сюда"); err == nil {
+	if ok, err := syscall.UTF16PtrFromString(L("Сохранять сюда", "Save here")); err == nil {
 		vcall(dlg, 18, uintptr(unsafe.Pointer(ok)))
 	}
 	if start != "" {
@@ -72,7 +72,7 @@ func folderDialog(owner uintptr, title, start string) (string, error) {
 	if uint32(r) == 0x800704C7 {
 		return "", errCancelled
 	}
-	if err := hrErr(r, "диалог выбора папки"); err != nil {
+	if err := hrErr(r, L("диалог выбора папки", "folder dialog")); err != nil {
 		return "", err
 	}
 	var item uintptr
@@ -87,7 +87,7 @@ func folderDialog(owner uintptr, title, start string) (string, error) {
 	s := wstr(p)
 	procCoTaskMemFree.Call(p)
 	if s == "" {
-		return "", errors.New("выбрана не обычная папка на диске")
+		return "", errors.New(L("выбрана не обычная папка на диске", "not a regular folder on disk"))
 	}
 	return s, nil
 }

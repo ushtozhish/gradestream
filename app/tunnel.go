@@ -51,14 +51,14 @@ func cloudflaredPath() string {
 func startTunnel(port int) {
 	if os.Getenv("GS_NO_TUNNEL") != "" {
 		tunMu.Lock()
-		tunStatus, tunErr = "error", "туннель отключён"
+		tunStatus, tunErr = "error", L("туннель отключён", "tunnel disabled")
 		tunMu.Unlock()
 		return
 	}
 	bin := cloudflaredPath()
 	if bin == "" {
 		tunMu.Lock()
-		tunStatus, tunErr = "missing", "cloudflared.exe не найден рядом с программой — переустановите GradeStream"
+		tunStatus, tunErr = "missing", L("cloudflared.exe не найден рядом с программой — переустановите GradeStream", "cloudflared.exe not found next to the app — reinstall GradeStream")
 		tunMu.Unlock()
 		return
 	}
@@ -97,7 +97,7 @@ func startTunnel(port int) {
 			stdout, _ := cmd.StdoutPipe()
 			if err := cmd.Start(); err != nil {
 				tunMu.Lock()
-				tunStatus, tunErr = "error", "не удалось запустить cloudflared: "+err.Error()
+				tunStatus, tunErr = "error", L("не удалось запустить cloudflared: ", "could not start cloudflared: ")+err.Error()
 				tunMu.Unlock()
 				log.Println(tunErr)
 				return
@@ -154,7 +154,7 @@ func startTunnel(port int) {
 			tail := strings.Join(lastLines, "\n")
 			llMu.Unlock()
 			tunStatus = "error"
-			tunErr = "Туннель Cloudflare не поднялся. Проверьте интернет и что антивирус/фаервол не блокирует cloudflared.exe. Пробую снова…"
+			tunErr = L("Туннель Cloudflare не поднялся. Проверьте интернет и что антивирус/фаервол не блокирует cloudflared.exe. Пробую снова…", "The Cloudflare tunnel did not come up. Check your internet connection and that antivirus/firewall is not blocking cloudflared.exe. Retrying…")
 			tunMu.Unlock()
 			if stop {
 				tunMu.Lock()

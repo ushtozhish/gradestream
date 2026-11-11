@@ -24,3 +24,8 @@ func documentsDir() string { h, _ := os.UserHomeDir(); return filepath.Join(h, "
 func openPath(p string)    { log.Println("OPEN:", p) }
 
 func networkProfileWarning() string { return "" }
+
+func systemPrefersRussian() bool {
+	l := os.Getenv("LANG")
+	return len(l) >= 2 && (l[:2] == "ru" || l[:2] == "kk" || l[:2] == "be" || l[:2] == "uk")
+}

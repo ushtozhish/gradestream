@@ -22,6 +22,6 @@ func listMonitors() []Monitor {
 	return []Monitor{{Index: 0, W: 1920, H: 1200, Primary: true, Name: "TEST"}}
 }
 func overlayShow(monIdx int, x, y int32, text string, ttl time.Duration) error {
-	return errors.New("метки поверх экрана доступны только в Windows")
+	return errors.New("on-screen markers are available on Windows only")
 }
 func overlayClear() {}

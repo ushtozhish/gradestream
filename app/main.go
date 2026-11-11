@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-const appVersion = "2.9.0"
+const appVersion = "2.10.0"
 
 //go:embed web/*
 var webFS embed.FS
@@ -281,7 +281,7 @@ func deviceName(ua string) string {
 	case strings.Contains(ua, "Windows"):
 		return "Windows"
 	}
-	return "устройство"
+	return L("устройство", "device")
 }
 
 func routes() *http.ServeMux {
@@ -388,6 +388,9 @@ func routes() *http.ServeMux {
 				hub.broadcastText(string(data))
 			case "diag": // что умеет браузер окна трансляции — для разбора проблем
 				log.Println("host browser:", string(data))
+			case "lang":
+				lg, _ := m["lang"].(string)
+				setLang(lg)
 			case "mode":
 				md, _ := m["mode"].(string)
 				go setMode(md)
@@ -413,7 +416,7 @@ func routes() *http.ServeMux {
 				// Окно свернули во время эфира — один раз подскажем, где программа
 				if !hiddenHintShown {
 					hiddenHintShown = true
-					trayNotify("Окно свёрнуто. Вернуть его — клик по значку GradeStream возле часов. Остановить или выйти — правый клик по значку.")
+					trayNotify(L("Окно свёрнуто. Вернуть его — клик по значку GradeStream возле часов. Остановить или выйти — правый клик по значку.", "The window is minimized. Click the GradeStream icon near the clock to bring it back; right-click it to stop or exit."))
 				}
 			case "ping":
 			}
@@ -468,7 +471,7 @@ func sendState() {
 	}
 	lanL, lanE, lanW := lanState()
 	hub.sendHost(map[string]any{"t": "state", "viewers": list, "link": link, "tunnel": st, "tunnelError": errText,
-		"mode": currentMode(), "lanLinks": lanL, "lanError": lanE, "lanWarn": lanW})
+		"mode": currentMode(), "lanLinks": lanL, "lanError": lanE, "lanWarn": lanW, "lang": currentLang(), "langPref": langPref()})
 }
 
 func tickers() {
@@ -509,6 +512,7 @@ func main() {
 	dataDir = appDataDir()
 	os.MkdirAll(dataDir, 0o755)
 	loadSettings()
+	applyLang(langPref())
 	if f, err := os.OpenFile(filepath.Join(dataDir, "log.txt"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
 		log.SetOutput(io.MultiWriter(f, os.Stderr))
 	}
@@ -530,7 +534,7 @@ func main() {
 		}
 	}
 	if ln == nil {
-		fatal("Не удалось открыть локальный порт: " + err.Error())
+		fatal(L("Не удалось открыть локальный порт: ", "Could not open a local port: ") + err.Error())
 	}
 	log.Printf("listening on 127.0.0.1:%d, room %s", port, room)
 
