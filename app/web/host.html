@@ -148,6 +148,12 @@
           <option value="50">50</option>
           <option value="60">60</option>
         </select></div>
+      <div class="row"><label class="l" data-en="Playback">Подача</label>
+        <select id="playout" style="flex:1;min-width:0">
+          <option value="live" data-en="Lowest latency — grading">Минимальная задержка — цветокоррекция</option>
+          <option value="sync" data-en="Smooth &amp; in sync — editing review">Плавно и синхронно — монтаж</option>
+        </select></div>
+      <div class="muted" id="playoutInfo" data-en="«Smooth &amp; in sync» adds a 0.12–0.7 s buffer on viewers (it adapts to the network) so frames come evenly and sound matches the picture. Sound is always synced when a viewer turns it on.">«Плавно и синхронно» — у зрителей буфер 0,12–0,7 с (подстраивается под сеть): кадры идут ровно, звук совпадает с картинкой. Если зритель включил звук, синхронизация включается всегда.</div>
       <div class="muted" id="encInfo"></div>
     </div>
 
@@ -258,6 +264,7 @@ function connectWS() {
   ws.onopen = () => {
     sendJSON({ t: 'audio-list' });
     sendJSON(diagMsg());
+    syncClock(); sendPlayout();
     if (running && encoder) { forceKey(); sendLive(); applyAudio(); }
   };
   ws.onclose = () => setTimeout(connectWS, 1000);
@@ -271,6 +278,7 @@ function connectWS() {
     if (m.t === 'state') renderState(m);
     else if (m.t === 'kf') requestKey();
     else if (m.t === 'mark') showMark(m);
+    else if (m.t === 'clock') onClock(m);
     else if (m.t === 'cmd' && m.action === 'stop') stopCapture(true);
   };
 }
@@ -278,7 +286,29 @@ function sendJSON(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o))
 setInterval(() => sendJSON({ t: 'ping' }), 10000);
 connectWS();
 
-function sendLive() { sendJSON({ t: 'live', on: running }); if (running) sendJSON({ t: 'pause', on: paused }); if (lastConfigMsg) sendJSON(lastConfigMsg); }
+// ---------- Общие часы с программой ----------
+// Кадры и звук помечаются временем захвата по часам программы (мкс): по этим меткам
+// зрители выдают звук и картинку синхронно. Смещение часов окна к часам программы
+// измеряется через localhost (задержка <1 мс) и уточняется каждые 5 с.
+let clockOffUs = 0, clockBestRtt = Infinity, clockSamples = 0;
+const pageUs = () => (performance.timeOrigin + performance.now()) * 1000;
+const serverNowUs = () => Math.round(pageUs() + clockOffUs);
+function onClock(m) {
+  const t1 = pageUs(), rtt = t1 - m.c;
+  if (rtt < 0 || rtt > 50000) return;
+  clockSamples++;
+  // берём замер с наименьшей задержкой; лучший постепенно «стареет», чтобы отслеживать дрейф
+  if (rtt <= clockBestRtt * 1.5 || clockSamples < 4) { clockBestRtt = Math.min(clockBestRtt, rtt); clockOffUs = m.s - (m.c + rtt / 2); }
+  clockBestRtt *= 1.05;
+}
+function syncClock() { for (let i = 0; i < 3; i++) setTimeout(() => sendJSON({ t: 'clock', c: pageUs() }), i * 50); }
+setInterval(syncClock, 5000);
+
+// Режим подачи у зрителей: live — минимальная задержка (цветокоррекция),
+// sync — ровная подача и синхронный звук (монтаж, режиссёр)
+function sendPlayout() { sendJSON({ t: 'playout', mode: $('playout').value }); }
+
+function sendLive() { sendPlayout(); sendJSON({ t: 'live', on: running }); if (running) sendJSON({ t: 'pause', on: paused }); if (lastConfigMsg) sendJSON(lastConfigMsg); }
 
 // ================= Формат 1920×1080 =================
 function crop169(w, h) {
@@ -440,12 +470,16 @@ function encodeCanvas(force) {
   const now = performance.now();
   const key = kfPending || now - lastKF > 3000;
   if (!force && !key && encoder.encodeQueueSize > 2) return;      // кодер не успевает — пропуск кадра
-  const vf = new VideoFrame(canvas, { timestamp: Math.round(now * 1000) });
+  // Время захвата кадра по часам программы. Кодируем примерно через кадр после захвата экрана
+  // (захват → копия в окно → кодер), поэтому метка сдвигается на длительность одного кадра назад —
+  // так она совпадает со звуком, который помечается моментом захвата из WASAPI.
+  const ts = serverNowUs() - Math.round(1e6 / +$('fps').value);
+  const vf = new VideoFrame(canvas, { timestamp: ts });
   try { encoder.encode(vf, { keyFrame: key }); } catch (e) { err('encode: ' + e.message); }
   vf.close();
   if (key) { kfPending = false; lastKF = now; }
   lastEnc = now; frameCount++;
-  remember(Math.round(now * 1000));
+  remember(ts);
 }
 
 // ---------- История кадров для скриншотов меток ----------
@@ -475,7 +509,7 @@ function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcT
 
 async function saveSnapshot(m, x, y) {
   // Внутри сети телефон сообщает свою задержку показа — берём кадр, который был у него на экране
-  if (!m.ts && m.lag != null) m.ts = Math.round((performance.now() - Math.min(2000, Math.max(0, +m.lag || 0)) - 40) * 1000);
+  if (!m.ts && m.lag != null) m.ts = serverNowUs() - Math.round((Math.min(2000, Math.max(0, +m.lag || 0)) + 40) * 1000);
   const src = frameAt(+m.ts || 0);
   const oc = new OffscreenCanvas(OUT_W, OUT_H);
   const c = oc.getContext('2d');
@@ -803,13 +837,13 @@ async function setupAudioEncoder() {
 function onPCM(buf) {
   const u = new Uint8Array(buf);
   if (u[0] !== 2) return;
+  const capTs = new DataView(buf).getFloat64(1);   // время захвата блока по часам программы, мкс
   const pcm = new Float32Array(buf.slice(9));
   for (let i = 0; i < pcm.length; i++) { const a = Math.abs(pcm[i]); if (a > peak) peak = a; }
   if (!aenc || aenc.state !== 'configured' || paused) return;
   const frames = pcm.length / 2;
   try {
-    const ad = new AudioData({ format: 'f32', sampleRate: 48000, numberOfFrames: frames, numberOfChannels: 2, timestamp: audioTs, data: pcm });
-    audioTs += Math.round(frames * 1e6 / 48000);
+    const ad = new AudioData({ format: 'f32', sampleRate: 48000, numberOfFrames: frames, numberOfChannels: 2, timestamp: Math.round(capTs), data: pcm });
     aenc.encode(ad);
     ad.close();
   } catch (e) { console.warn(e); }
@@ -1039,6 +1073,8 @@ $('stage').addEventListener('dblclick', toggleFS);
 document.addEventListener('fullscreenchange', () => { $('btnFS').textContent = document.fullscreenElement ? L('Выйти (Esc)', 'Exit (Esc)') : L('Во весь экран', 'Fullscreen'); });
 
 $('btnFolder').onclick = () => openFolder();
+try { const pv = localStorage.getItem('gs.playout'); if (pv === 'live' || pv === 'sync') $('playout').value = pv; } catch {}
+$('playout').onchange = () => { try { localStorage.setItem('gs.playout', $('playout').value); } catch {} sendPlayout(); };
 
 // ---------- Папка для скриншотов ----------
 function showSnapFolder(j) {

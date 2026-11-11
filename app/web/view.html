@@ -103,6 +103,7 @@ function onText(m) {
   else if (m.t === 'rtc-offer') onRtcOffer(m);
   else if (m.t === 'rtc-ice') { if (pc && m.c) pc.addIceCandidate(m.c).catch(() => {}); }
   else if (m.t === 'rtc-error') status(L('Не удалось начать показ: ', 'Could not start playback: ') + m.error);
+  else if (m.t === 'playout') { playMode = m.mode === 'sync' ? 'sync' : 'live'; applyReceiverMode(); }
   else if (m.t === 'audio') { if (LAN) $('btnSound').style.display = m.on ? '' : 'none'; else onAudioConfig(m); }
   else if (m.t === 'config') { if (!LAN) setupDecoder(m); }
   else if (m.t === 'live') {
@@ -114,6 +115,15 @@ function onText(m) {
 }
 
 // ---------- Внутри сети: WebRTC ----------
+// Синхронность звука и картинки обеспечивает сам браузер по отчётам отправителя (время захвата).
+// Режим «ровно»: просим буфер ~200 мс под разброс Wi-Fi; «минимальная задержка» — без буфера.
+const receivers = [];
+function applyReceiverMode() {
+  for (const r of receivers) {
+    const ms = playMode === 'sync' ? 200 : 0;
+    try { if ('jitterBufferTarget' in r) r.jitterBufferTarget = ms; else r.playoutDelayHint = ms / 1000; } catch {}
+  }
+}
 let pc = null, rtcRetry = null, lagMs = 150, lastBytesRx = 0, rxFps = 0, rxMbps = 0;
 const lv = $('lv');
 function startRTC() {
@@ -128,7 +138,7 @@ async function onRtcOffer(m) {
   const stream = new MediaStream();
   p.ontrack = e => {
     stream.addTrack(e.track);
-    try { e.receiver.playoutDelayHint = 0; } catch {}
+    receivers.push(e.receiver); applyReceiverMode();
     if (lv.srcObject !== stream) lv.srcObject = stream;
     lv.play().catch(() => {});
   };
@@ -187,14 +197,87 @@ async function setupDecoder(m) {
   if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…'));
 }
 
+// ---------- Синхронная подача: звук вместе с картинкой, кадры ровно ----------
+// Каждый кадр и блок звука помечены временем захвата по часам программы. Зритель оценивает,
+// с какой задержкой они приходят (сеть + разница часов) и как сильно она скачет, и выдаёт
+// всё по формуле «время захвата + задержка + буфер». Одинаковая задержка для звука и видео
+// = синхронность; буфер под разброс сети = ровный ритм кадров.
+let playMode = 'live';                       // режим, выбранный в программе
+const localUs = () => (performance.timeOrigin + performance.now()) * 1000;
+const syncOn = () => playMode === 'sync' || soundOn;
+const arrivals = { v: [], a: [] };
+function noteArrival(kind, ts) {
+  const now = localUs(), list = arrivals[kind];
+  list.push([now, now - ts]);
+  while (list.length && now - list[0][0] > 8e6) list.shift();
+}
+function minDelay(list) { let m = Infinity; for (const x of list) if (x[1] < m) m = x[1]; return m; }
+function spread(list, base) {
+  if (list.length < 8) return 80000;
+  const v = list.map(x => x[1] - base).sort((a, b) => a - b);
+  return v[Math.floor(v.length * 0.95)];
+}
+let playBase = null, playDelay = 200000, lastPlan = 0;
+function plan() {
+  const t = performance.now();
+  if (playBase !== null && t - lastPlan < 500) return;
+  lastPlan = t;
+  const useA = soundOn && arrivals.a.length > 5;
+  const mv = minDelay(arrivals.v), ma = useA ? minDelay(arrivals.a) : -Infinity;
+  if (!isFinite(mv) && !useA) return;
+  const base = Math.max(mv, ma);
+  const sp = Math.max(isFinite(mv) ? spread(arrivals.v, mv) : 0, useA ? spread(arrivals.a, ma) : 0);
+  const target = Math.min(700000, Math.max(120000, sp + 60000));
+  playDelay = target > playDelay ? target : playDelay * 0.95 + target * 0.05;   // растёт сразу, падает плавно
+  playBase = (playBase === null || Math.abs(base - playBase) > 40000) ? base : playBase * 0.9 + base * 0.1;
+}
+const presentUs = ts => ts + playBase + playDelay;
+
+// Очередь декодированных кадров (ImageBitmap — чтобы сразу вернуть кадр декодеру)
+const vq = []; let vchain = Promise.resolve();
+function queueFrame(f) {
+  plan();
+  const ts = f.timestamp, at = playBase === null ? localUs() : presentUs(ts);
+  vchain = vchain.then(() => createImageBitmap(f)).then(bmp => {
+    f.close(); vq.push({ bmp, ts, at });
+    while (vq.length > 45) vq.shift().bmp.close();
+  }).catch(() => { try { f.close(); } catch {} });
+}
+function showBitmap(item) {
+  ctx.drawImage(item.bmp, 0, 0, 1920, 1080);
+  shownTs = item.ts; item.bmp.close(); frames++;
+  if (window.__avProbe) window.__avProbe('v', item.ts, performance.now());
+  if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
+}
+(function tick() {
+  requestAnimationFrame(tick);
+  if (!vq.length) return;
+  if (!syncOn()) { while (vq.length > 1) vq.shift().bmp.close(); showBitmap(vq.shift()); return; }
+  const now = localUs(); let show = null;
+  while (vq.length && vq[0].at <= now) { if (show) show.bmp.close(); show = vq.shift(); }
+  if (show) showBitmap(show);
+})();
+
+// Время по часам страницы (мкс) → время аудиоконтекста, с учётом задержки аудиовыхода
+function ctxTimeFor(atUs) {
+  const perfMs = atUs / 1000 - performance.timeOrigin;
+  if (actx.getOutputTimestamp) {
+    const o = actx.getOutputTimestamp();
+    if (o.performanceTime) return o.contextTime + (perfMs - o.performanceTime) / 1000;
+  }
+  return actx.currentTime + (perfMs - performance.now()) / 1000 - (actx.outputLatency || actx.baseLatency || 0);
+}
+
 function resetDecoder() {
   if (decoder && decoder.state !== 'closed') { try { decoder.close(); } catch {} }
   decoder = new VideoDecoder({
     output: f => {
+      if (syncOn()) { queueFrame(f); return; }
       ctx.drawImage(f, 0, 0, 1920, 1080);
       shownTs = f.timestamp;   // какой кадр сейчас на экране — для скриншота метки
       f.close();
       frames++;
+      if (window.__avProbe) window.__avProbe('v', shownTs, performance.now());
       if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
     },
     error: e => { console.warn(e); setTimeout(() => { if (cfg) { resetDecoder(); askKey(); } }, 100); },
@@ -213,6 +296,7 @@ function onFrame(buf) {
   const dv = new DataView(buf);
   const isKey = dv.getUint8(0) === 1;
   const ts = dv.getFloat64(1);
+  noteArrival('v', ts);
   if (waitKey && !isKey) { askKey(); return; }
   // Декодер отстаёт (слабый телефон) — ждём следующий ключевой кадр, чтобы не копить задержку
   if (!isKey && decoder.decodeQueueSize > 6) { waitKey = true; askKey(); return; }
@@ -258,8 +342,9 @@ function setupAudioDecoder() {
         try { ad.copyTo(arr, { planeIndex: Math.min(i, ch - 1), format: 'f32-planar' }); } catch { }
         buf.copyToChannel(arr, i);
       }
+      const ts = ad.timestamp;
       ad.close();
-      schedule(buf);
+      schedule(buf, ts);
     },
     error: e => { console.warn(e); setTimeout(setupAudioDecoder, 300); },
   });
@@ -267,33 +352,40 @@ function setupAudioDecoder() {
 }
 
 // Небольшой буфер ~150 мс: звук без щелчков и почти без задержки
-function schedule(buf) {
+// Звук ставится на момент «время захвата + общая задержка» — тот же, что и у кадров
+function schedule(buf, ts) {
   if (!actx || !soundOn) return;
-  const now = actx.currentTime;
-  if (nextTime < now + 0.03) nextTime = now + 0.15;
-  if (nextTime > now + 0.8) return;            // сильно отстали — пропускаем, чтобы догнать
+  plan();
+  if (playBase === null) return;
+  const ideal = ctxTimeFor(presentUs(ts)), now = actx.currentTime;
+  if (ideal < now + 0.005) return;                                   // опоздал — пропускаем
+  if (Math.abs(nextTime - ideal) > 0.025 || nextTime < now + 0.005) nextTime = ideal;   // привязка заново
   const src = actx.createBufferSource();
   src.buffer = buf;
   src.connect(actx.destination);
   src.start(nextTime);
+  if (window.__avProbe) window.__avProbe('a', ts, nextTime, buf, actx);
   nextTime += buf.duration;
 }
 
 function onOpus(buf) {
   if (!soundOn || !adec || adec.state !== 'configured') return;
   const dv = new DataView(buf);
+  noteArrival('a', dv.getFloat64(1));
   try { adec.decode(new EncodedAudioChunk({ type: 'key', timestamp: dv.getFloat64(1), data: new Uint8Array(buf, 9) })); } catch (e) { console.warn(e); }
 }
 
 // Облегчённый звук для устройств без декодера Opus: int16, 24 кГц, стерео
 function onPCM(buf) {
   if (!soundOn || !actx) return;
+  const pts = new DataView(buf).getFloat64(1);
+  noteArrival('a', pts);
   const s16 = new Int16Array(buf.slice(9));
   const n = s16.length / 2;
   const b = actx.createBuffer(2, n, 24000);
   const chL = b.getChannelData(0), chR = b.getChannelData(1);
   for (let i = 0; i < n; i++) { chL[i] = s16[2 * i] / 32768; chR[i] = s16[2 * i + 1] / 32768; }
-  schedule(b);
+  schedule(b, pts);
 }
 
 $('btnSound').onclick = async e => {

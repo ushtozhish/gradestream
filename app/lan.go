@@ -24,32 +24,37 @@ import (
 	"github.com/pion/ice/v4"
 	"github.com/pion/interceptor"
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
+	"github.com/pion/rtp/codecs"
 	"github.com/pion/webrtc/v4"
-	"github.com/pion/webrtc/v4/pkg/media"
 	qrcode "github.com/skip2/go-qrcode"
 )
 
 const h264Fmtp = "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
 
 var (
-	lanMu      sync.Mutex
-	lanOn      bool
-	lanPort    int
-	lanSrv     *http.Server
-	lanMux     *ice.MultiUDPMuxDefault
-	lanAPI     *webrtc.API
-	lanVideo   *webrtc.TrackLocalStaticSample
-	lanAudio   *webrtc.TrackLocalStaticSample
-	lanErr     string
-	lanWarn    string
-	h264Params struct {
+	lanMu     sync.Mutex
+	lanOn     bool
+	lanPort   int
+	lanSrv    *http.Server
+	lanMux    *ice.MultiUDPMuxDefault
+	lanAPI    *webrtc.API
+	lanVideo  *webrtc.TrackLocalStaticRTP
+	lanAudio  *webrtc.TrackLocalStaticRTP
+	lanVPack  rtp.Packetizer
+	lanASeq   uint16
+	lanSendMu sync.Mutex
+	// счётчики для отчётов отправителя
+	lanVPkts, lanVOctets, lanAPkts, lanAOctets atomic.Uint32
+	lanErr                                     string
+	lanWarn                                    string
+	h264Params                                 struct {
 		sync.Mutex
 		sps, pps [][]byte
 		nalLen   int
 	}
-	lastVideoTS, lastAudioTS float64
-	lanAnyIP                 = os.Getenv("GS_LAN_ANY") != ""
-	lanBytes                 atomic.Int64 // отправлено каждому телефону в сети (поток у всех один)
+	lanAnyIP = os.Getenv("GS_LAN_ANY") != ""
+	lanBytes atomic.Int64 // отправлено каждому телефону в сети (поток у всех один)
 )
 
 // ---------- Адреса компьютера в локальной сети ----------
@@ -213,8 +218,11 @@ func setupLanAPI() error {
 	}, webrtc.RTPCodecTypeAudio); err != nil {
 		return err
 	}
+	// Только повторная отправка потерянных пакетов (NACK). Отчёты отправителя (SR) шлём сами:
+	// стандартные привязывают RTP-время к моменту отправки, а нам нужно время захвата —
+	// по нему браузер совмещает звук с картинкой.
 	ir := &interceptor.Registry{}
-	if err := webrtc.RegisterDefaultInterceptors(m, ir); err != nil {
+	if err := webrtc.ConfigureNack(m, ir); err != nil {
 		return err
 	}
 	se := webrtc.SettingEngine{}
@@ -225,14 +233,15 @@ func setupLanAPI() error {
 	lanAPI = webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(ir), webrtc.WithSettingEngine(se))
 	var err error
 	if lanVideo == nil {
-		lanVideo, err = webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264, ClockRate: 90000, SDPFmtpLine: h264Fmtp}, "video", "gradestream")
+		lanVideo, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeH264, ClockRate: 90000, SDPFmtpLine: h264Fmtp}, "video", "gradestream")
 		if err != nil {
 			return err
 		}
-		lanAudio, err = webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus, ClockRate: 48000, Channels: 2}, "audio", "gradestream")
+		lanAudio, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus, ClockRate: 48000, Channels: 2}, "audio", "gradestream")
 		if err != nil {
 			return err
 		}
+		lanVPack = rtp.NewPacketizer(1200, 102, 0, &codecs.H264Payloader{}, rtp.NewRandomSequencer(), 90000)
 	}
 	return nil
 }
@@ -266,8 +275,12 @@ func newLanPeer(v *Viewer) (*lanPeer, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, tr := range []webrtc.TrackLocal{lanVideo, lanAudio} {
+	var senders [2]*webrtc.RTPSender
+	for i, tr := range []webrtc.TrackLocal{lanVideo, lanAudio} {
 		sender, err := pc.AddTransceiverFromTrack(tr, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly})
+		if err == nil {
+			senders[i] = sender.Sender()
+		}
 		if err != nil {
 			pc.Close()
 			return nil, err
@@ -287,12 +300,13 @@ func newLanPeer(v *Viewer) (*lanPeer, error) {
 			}
 		}(sender.Sender())
 	}
+	go senderReports(pc, senders)
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c == nil {
 			return
 		}
 		b, _ := json.Marshal(map[string]any{"t": "rtc-ice", "c": c.ToJSON()})
-		v.enqueue(outMsg{opText, b}, true)
+		v.enqueue(outMsg{op: opText, data: b}, true)
 	})
 	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
 		log.Printf("viewer %s webrtc: %s", v.id, s)
@@ -310,7 +324,7 @@ func newLanPeer(v *Viewer) (*lanPeer, error) {
 		return nil, err
 	}
 	b, _ := json.Marshal(map[string]any{"t": "rtc-offer", "sdp": pc.LocalDescription().SDP})
-	v.enqueue(outMsg{opText, b}, true)
+	v.enqueue(outMsg{op: opText, data: b}, true)
 	return &lanPeer{pc: pc}, nil
 }
 
@@ -426,27 +440,80 @@ func clampDur(d float64, def time.Duration) time.Duration {
 }
 
 // msg: [1 байт тип][8 байт timestamp, мкс][данные]
+// RTP-время из времени захвата (мкс по часам программы): одна шкала для звука и видео
+func rtpTime(us int64, clock int64) uint32 { return uint32(us * clock / 1_000_000) }
+
 func lanVideoFrame(msg []byte) {
 	if lanVideo == nil || !anyLanPeer() {
 		return
 	}
-	ts := mathFloat64(msg[1:9])
-	dur := clampDur(ts-lastVideoTS, 40*time.Millisecond)
-	lastVideoTS = ts
+	ts := int64(mathFloat64(msg[1:9]))
 	data := avccToAnnexB(msg[9:], msg[0] == 1)
+	lanSendMu.Lock()
+	pkts := lanVPack.Packetize(data, 0)
+	lanSendMu.Unlock()
+	for _, p := range pkts {
+		p.Timestamp = rtpTime(ts, 90000)
+		lanVideo.WriteRTP(p)
+		lanVPkts.Add(1)
+		lanVOctets.Add(uint32(len(p.Payload)))
+	}
 	lanBytes.Add(int64(len(data)))
-	lanVideo.WriteSample(media.Sample{Data: data, Duration: dur})
 }
 
 func lanAudioPacket(msg []byte) {
 	if lanAudio == nil || !anyLanPeer() {
 		return
 	}
-	ts := mathFloat64(msg[1:9])
-	dur := clampDur(ts-lastAudioTS, 20*time.Millisecond)
-	lastAudioTS = ts
+	ts := int64(mathFloat64(msg[1:9]))
+	lanSendMu.Lock()
+	lanASeq++
+	seq := lanASeq
+	lanSendMu.Unlock()
+	p := &rtp.Packet{Header: rtp.Header{Version: 2, PayloadType: 111, SequenceNumber: seq, Timestamp: rtpTime(ts, 48000)},
+		Payload: append([]byte(nil), msg[9:]...)}
+	lanAudio.WriteRTP(p)
+	lanAPkts.Add(1)
+	lanAOctets.Add(uint32(len(p.Payload)))
 	lanBytes.Add(int64(len(msg) - 9))
-	lanAudio.WriteSample(media.Sample{Data: append([]byte(nil), msg[9:]...), Duration: dur})
+}
+
+// Отчёты отправителя: «этому RTP-времени соответствует такое-то время по часам программы».
+// Браузер по ним сводит звук и видео к общей шкале и выдаёт их синхронно.
+func senderReports(pc *webrtc.PeerConnection, senders [2]*webrtc.RTPSender) {
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+	clocks := [2]int64{90000, 48000}
+	for range t.C {
+		st := pc.ConnectionState()
+		if st == webrtc.PeerConnectionStateClosed || st == webrtc.PeerConnectionStateFailed {
+			return
+		}
+		if st != webrtc.PeerConnectionStateConnected {
+			continue
+		}
+		now := time.Now()
+		us := now.UnixMicro()
+		ntp := uint64(now.Unix()+2208988800)<<32 | uint64(now.Nanosecond())*(1<<32)/1_000_000_000
+		var reports []rtcp.Packet
+		for i, snd := range senders {
+			if snd == nil {
+				continue
+			}
+			enc := snd.GetParameters().Encodings
+			if len(enc) == 0 {
+				continue
+			}
+			pk, oc := lanVPkts.Load(), lanVOctets.Load()
+			if i == 1 {
+				pk, oc = lanAPkts.Load(), lanAOctets.Load()
+			}
+			reports = append(reports, &rtcp.SenderReport{SSRC: uint32(enc[0].SSRC), NTPTime: ntp, RTPTime: rtpTime(us, clocks[i]), PacketCount: pk, OctetCount: oc})
+		}
+		if len(reports) > 0 {
+			pc.WriteRTCP(reports)
+		}
+	}
 }
 
 // ---------- QR-код ссылки ----------

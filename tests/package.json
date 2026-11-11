@@ -1,0 +1,8 @@
+{
+  "name": "gradestream-measurements",
+  "private": true,
+  "description": "Color, A/V sync and frame pacing measurements for GradeStream",
+  "dependencies": {
+    "playwright": "1.65.0"
+  }
+}

@@ -286,6 +286,24 @@ func toStereo(f wfmt, data uintptr, frames int, silent bool) []float32 {
 	return out
 }
 
+var (
+	procQPC     = kernel32.NewProc("QueryPerformanceCounter")
+	procQPF     = kernel32.NewProc("QueryPerformanceFrequency")
+	qpcFreq     int64
+	qpcFreqOnce sync.Once
+)
+
+// Текущее значение счётчика производительности в единицах 100 нс (как отдаёт WASAPI)
+func qpcNow100ns() int64 {
+	qpcFreqOnce.Do(func() { procQPF.Call(uintptr(unsafe.Pointer(&qpcFreq))) })
+	var c int64
+	procQPC.Call(uintptr(unsafe.Pointer(&c)))
+	if qpcFreq == 0 {
+		return 0
+	}
+	return int64(float64(c) * 1e7 / float64(qpcFreq))
+}
+
 func drain(capt uintptr, f wfmt, rs *resampler) error {
 	for {
 		var n uint32
@@ -297,14 +315,23 @@ func drain(capt uintptr, f wfmt, rs *resampler) error {
 		}
 		var data uintptr
 		var frames, flags uint32
+		var qpcPos uint64 // момент захвата первого кадра пакета, 100 нс
 		if err := hrErr(vcall(capt, 3, uintptr(unsafe.Pointer(&data)), uintptr(unsafe.Pointer(&frames)),
-			uintptr(unsafe.Pointer(&flags)), 0, 0), "GetBuffer"); err != nil {
+			uintptr(unsafe.Pointer(&flags)), 0, uintptr(unsafe.Pointer(&qpcPos))), "GetBuffer"); err != nil {
 			return err
 		}
 		pcm := toStereo(f, data, int(frames), flags&bufSilent != 0)
 		vcall(capt, 4, uintptr(frames))
+		// Время окончания пакета по часам программы: из отметки WASAPI, если она есть
+		end := nowUs()
+		if qpcPos != 0 && flags&0x4 == 0 { // 0x4 = AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR
+			age := (qpcNow100ns() - int64(qpcPos)) / 10 // мкс с момента захвата первого кадра
+			if age >= 0 && age < 2_000_000 {
+				end = nowUs() - age + int64(frames)*1_000_000/int64(f.rate)
+			}
+		}
 		if out := rs.process(pcm); len(out) > 0 {
-			sink.push(out)
+			sink.push(out, end)
 		}
 	}
 }

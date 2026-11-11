@@ -15,17 +15,19 @@ import (
 	"io"
 	"log"
 	"math"
+	mrand "math/rand/v2"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-const appVersion = "2.10.1"
+const appVersion = "2.11.0"
 
 //go:embed web/*
 var webFS embed.FS
@@ -49,6 +51,7 @@ func randHex(n int) string {
 type outMsg struct {
 	op   byte
 	data []byte
+	at   time.Time // момент постановки в очередь (для тестовой имитации сети)
 }
 
 type Viewer struct {
@@ -67,7 +70,12 @@ type Viewer struct {
 	lan       bool        // подключён по локальной сети — видео идёт по WebRTC
 	rtc       *lanPeer
 	rtcBytes  int64
+
+	lastDeliver time.Time // для тестовой имитации сети
 }
+
+// GS_TEST_JITTER_MS — только для замеров: случайная задержка доставки зрителям 0…N мс
+var testJitterUs = func() int64 { n, _ := strconv.Atoi(os.Getenv("GS_TEST_JITTER_MS")); return int64(n) * 1000 }()
 
 type Hub struct {
 	mu         sync.Mutex
@@ -75,6 +83,7 @@ type Hub struct {
 	viewers    map[string]*Viewer
 	lastConfig string
 	lastAudio  string
+	lastPlay   string // режим подачи у зрителей: live | sync
 	live       bool
 	lastKFReq  time.Time
 	hostSeen   time.Time
@@ -122,7 +131,7 @@ func (h *Hub) broadcastAudio(data []byte, pcm bool) {
 	}
 	h.mu.Unlock()
 	for _, v := range vs {
-		if !v.enqueue(outMsg{opBinary, data}, false) {
+		if !v.enqueue(outMsg{op: opBinary, data: data}, false) {
 			v.drops.Add(1)
 		}
 	}
@@ -150,13 +159,16 @@ func (h *Hub) broadcastText(s string) {
 	}
 	h.mu.Unlock()
 	for _, v := range vs {
-		v.enqueue(outMsg{opText, []byte(s)}, true)
+		v.enqueue(outMsg{op: opText, data: []byte(s)}, true)
 	}
 }
 
 func (v *Viewer) enqueue(m outMsg, important bool) bool {
 	if v.closed.Load() {
 		return false
+	}
+	if testJitterUs > 0 {
+		m.at = time.Now()
 	}
 	select {
 	case v.ch <- m:
@@ -202,7 +214,7 @@ func (h *Hub) broadcastFrame(data []byte) {
 			needKF = true
 			continue
 		}
-		if v.enqueue(outMsg{opBinary, data}, false) {
+		if v.enqueue(outMsg{op: opBinary, data: data}, false) {
 			if isKey {
 				v.needKey.Store(false)
 			}
@@ -224,6 +236,14 @@ func (v *Viewer) writer() {
 		case m = <-v.ch:
 		case <-v.done:
 			return
+		}
+		if testJitterUs > 0 { // только для замеров: имитация неровной сети (порядок сохраняется)
+			at := m.at.Add(time.Duration(mrand.Int64N(testJitterUs)) * time.Microsecond)
+			if at.Before(v.lastDeliver) {
+				at = v.lastDeliver
+			}
+			v.lastDeliver = at
+			time.Sleep(time.Until(at))
 		}
 		var err error
 		if m.op == opBinary {
@@ -386,6 +406,19 @@ func routes() *http.ServeMux {
 				hub.lastAudio = string(data)
 				hub.mu.Unlock()
 				hub.broadcastText(string(data))
+			case "clock": // сверка часов окна трансляции с часами программы
+				b, _ := json.Marshal(map[string]any{"t": "clock", "c": m["c"], "s": nowUs()})
+				hub.mu.Lock()
+				hs := hub.host
+				hub.mu.Unlock()
+				if hs != nil {
+					hs.WriteText(string(b))
+				}
+			case "playout":
+				hub.mu.Lock()
+				hub.lastPlay = string(data)
+				hub.mu.Unlock()
+				hub.broadcastText(string(data))
 			case "diag": // что умеет браузер окна трансляции — для разбора проблем
 				log.Println("host browser:", string(data))
 			case "lang":
@@ -494,7 +527,7 @@ func tickers() {
 		case <-pingT.C:
 			hub.mu.Lock()
 			for _, v := range hub.viewers {
-				v.enqueue(outMsg{opPing, nil}, false)
+				v.enqueue(outMsg{op: opPing, data: nil}, false)
 			}
 			if hub.host != nil {
 				hub.host.Ping()
@@ -638,18 +671,21 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 
 	hub.mu.Lock()
 	hub.viewers[v.id] = v
-	cfg, live, acfg := hub.lastConfig, hub.live, hub.lastAudio
+	cfg, live, acfg, pcfg := hub.lastConfig, hub.live, hub.lastAudio, hub.lastPlay
 	hub.mu.Unlock()
 	log.Printf("viewer %s (%s) joined", v.id, v.dev)
 
 	hello, _ := json.Marshal(map[string]any{"t": "hello", "id": v.id, "live": live})
-	v.enqueue(outMsg{opText, hello}, true)
+	v.enqueue(outMsg{op: opText, data: hello}, true)
 	if cfg != "" {
-		v.enqueue(outMsg{opText, []byte(cfg)}, true)
+		v.enqueue(outMsg{op: opText, data: []byte(cfg)}, true)
 		hub.requestKeyframe()
 	}
 	if acfg != "" {
-		v.enqueue(outMsg{opText, []byte(acfg)}, true)
+		v.enqueue(outMsg{op: opText, data: []byte(acfg)}, true)
+	}
+	if pcfg != "" {
+		v.enqueue(outMsg{op: opText, data: []byte(pcfg)}, true)
 	}
 	sendState()
 
@@ -670,7 +706,7 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 			p, err := newLanPeer(v)
 			if err != nil {
 				b, _ := json.Marshal(map[string]any{"t": "rtc-error", "error": err.Error()})
-				v.enqueue(outMsg{opText, b}, true)
+				v.enqueue(outMsg{op: opText, data: b}, true)
 				break
 			}
 			hub.mu.Lock()

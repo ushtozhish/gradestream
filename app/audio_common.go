@@ -78,28 +78,47 @@ func (r *resampler) process(in []float32) []float32 {
 // ---------- Раздача PCM ----------
 
 type audioSink struct {
-	mu  sync.Mutex
-	buf []float32 // 48 кГц стерео interleaved
+	mu       sync.Mutex
+	buf      []float32 // 48 кГц стерео interleaved
+	bufStart int64     // время захвата первого сэмпла в buf, мкс (часы программы)
 }
+
+// Часы программы: общая шкала времени для звука и кадров (мкс от эпохи Unix)
+func nowUs() int64 { return time.Now().UnixMicro() }
 
 var sink = &audioSink{}
 
 const blockFrames = 960 // 20 мс
 
-// Принимает уже 48 кГц стерео.
-func (s *audioSink) push(pcm []float32) {
+// Принимает уже 48 кГц стерео. endUs — время захвата последнего сэмпла пакета.
+// Каждый 20-мс блок получает метку времени захвата своего первого сэмпла:
+// по ней зритель синхронизирует звук с картинкой.
+func (s *audioSink) push(pcm []float32, endUs int64) {
+	frames := int64(len(pcm) / 2)
+	startUs := endUs - frames*1_000_000/audioRate
 	s.mu.Lock()
+	queued := int64(len(s.buf) / 2)
+	predicted := s.bufStart + queued*1_000_000/audioRate
+	if len(s.buf) == 0 || predicted-startUs > 30_000 || startUs-predicted > 30_000 {
+		// первый пакет или расхождение больше 30 мс (пропуск, сбой) — привязываемся заново
+		s.bufStart = startUs - queued*1_000_000/audioRate
+	}
 	s.buf = append(s.buf, pcm...)
-	var blocks [][]float32
+	type blk struct {
+		b  []float32
+		ts int64
+	}
+	var blocks []blk
 	for len(s.buf) >= blockFrames*2 {
 		b := make([]float32, blockFrames*2)
 		copy(b, s.buf)
 		s.buf = s.buf[blockFrames*2:]
-		blocks = append(blocks, b)
+		blocks = append(blocks, blk{b, s.bufStart})
+		s.bufStart += blockFrames * 1_000_000 / audioRate
 	}
 	s.mu.Unlock()
 	for _, b := range blocks {
-		sendPCMBlock(b)
+		sendPCMBlock(b.b, b.ts)
 	}
 }
 
@@ -109,11 +128,12 @@ func (s *audioSink) reset() {
 	s.mu.Unlock()
 }
 
-// В окно трансляции: [2][8 байт резерв][float32 LE interleaved]
-// Зрителям без Opus: [4][8 байт резерв][int16 LE interleaved, 24 кГц стерео]
-func sendPCMBlock(b []float32) {
+// В окно трансляции: [2][8 байт: время захвата, мкс, float64 BE][float32 LE interleaved]
+// Зрителям без Opus: [4][время захвата][int16 LE interleaved, 24 кГц стерео]
+func sendPCMBlock(b []float32, tsUs int64) {
 	msg := make([]byte, 9+len(b)*4)
 	msg[0] = 2
+	binary.BigEndian.PutUint64(msg[1:], math.Float64bits(float64(tsUs)))
 	for i, v := range b {
 		binary.LittleEndian.PutUint32(msg[9+i*4:], math.Float32bits(v))
 	}
@@ -125,6 +145,7 @@ func sendPCMBlock(b []float32) {
 	frames := len(b) / 2 / 2
 	p := make([]byte, 9+frames*4)
 	p[0] = 4
+	copy(p[1:9], msg[1:9])
 	for i := 0; i < frames; i++ {
 		l := (b[4*i] + b[4*i+2]) / 2
 		r := (b[4*i+1] + b[4*i+3]) / 2
@@ -179,7 +200,7 @@ func selectAudio(kind, id string, pid uint32) (string, error) {
 	var desc string
 	switch kind {
 	case "test":
-		desc = L("тестовый сигнал 1 кГц", "1 kHz test tone")
+		desc = L("тестовый сигнал: бип каждую секунду", "test tone: a beep every second")
 		go testTone(stop, done, ready)
 	case "device":
 		desc = L("устройство вывода", "output device")
@@ -201,32 +222,34 @@ func selectAudio(kind, id string, pid uint32) (string, error) {
 	return desc, nil
 }
 
-// Синус 1 кГц, −18 dBFS, с паузами — проверить, что звук доходит до клиента
+// Тестовый сигнал: бип 1 кГц длиной 100 мс в начале каждой секунды по часам программы.
+// Бип привязан к тем же часам, что и кадры, — по нему удобно проверять синхронизацию.
 func testTone(stop, done chan struct{}, ready chan error) {
 	defer close(done)
 	ready <- nil
-	t := time.NewTicker(20 * time.Millisecond)
+	t := time.NewTicker(10 * time.Millisecond)
 	defer t.Stop()
-	phase := 0.0
-	n := 0
+	const blockUs = blockFrames * 1_000_000 / audioRate
+	next := nowUs() - blockUs // время первого сэмпла следующего блока
 	for {
 		select {
 		case <-stop:
 			return
 		case <-t.C:
 		}
-		b := make([]float32, blockFrames*2)
-		on := (n/25)%2 == 0 // полсекунды тон, полсекунды тишина
-		for i := 0; i < blockFrames; i++ {
-			v := float32(0)
-			if on {
-				v = float32(0.125 * math.Sin(phase))
+		for next+blockUs <= nowUs() {
+			b := make([]float32, blockFrames*2)
+			for i := 0; i < blockFrames; i++ {
+				ts := next + int64(i)*1_000_000/audioRate
+				v := float32(0)
+				if ms := (ts / 1000) % 1000; ms < 100 {
+					v = float32(0.25 * math.Sin(2*math.Pi*1000*float64(ts%1_000_000)/1e6))
+				}
+				b[2*i], b[2*i+1] = v, v
 			}
-			phase += 2 * math.Pi * 1000 / audioRate
-			b[2*i], b[2*i+1] = v, v
+			next += blockUs
+			sink.push(b, next)
 		}
-		n++
-		sink.push(b)
 	}
 }
 

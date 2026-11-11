@@ -5,13 +5,13 @@
 // GS_LAN_ANY allows test addresses outside private ranges, GS_NO_TUNNEL skips Cloudflare.
 const fs = require('fs'); const { chromium } = require('playwright');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-// ---- таблица ----
+// ---- test chart ----
 const P = [];
-for (const g of [0,16,32,48,64,80,96,112,128,144,160,176,192,208,224,240,255]) P.push({ n: 'серый ' + g, c: [g,g,g], gray: true });
+for (const g of [0,16,32,48,64,80,96,112,128,144,160,176,192,208,224,240,255]) P.push({ n: 'gray ' + g, c: [g,g,g], gray: true });
 for (const [n, c] of [['R 100%',[255,0,0]],['G 100%',[0,255,0]],['B 100%',[0,0,255]],['C 100%',[0,255,255]],['M 100%',[255,0,255]],['Y 100%',[255,255,0]],
   ['R 75%',[191,0,0]],['G 75%',[0,191,0]],['B 75%',[0,0,191]],['C 75%',[0,191,191]],['M 75%',[191,0,191]],['Y 75%',[191,191,0]],
-  ['тёмная кожа',[115,82,68]],['светлая кожа',[194,150,130]],['небо',[98,122,157]],['листва',[87,108,67]],['голубой цветок',[133,128,177]],['сине-зелёный',[103,189,170]],
-  ['оранжевый',[214,126,44]],['пурпурно-синий',[80,91,166]],['умеренно-красный',[193,90,99]],['фиолетовый',[94,60,108]],['жёлто-зелёный',[157,188,64]],['оранжево-жёлтый',[224,163,46]]]) P.push({ n, c });
+  ['dark skin',[115,82,68]],['light skin',[194,150,130]],['blue sky',[98,122,157]],['foliage',[87,108,67]],['blue flower',[133,128,177]],['bluish green',[103,189,170]],
+  ['orange',[214,126,44]],['purplish blue',[80,91,166]],['moderate red',[193,90,99]],['purple',[94,60,108]],['yellow green',[157,188,64]],['orange yellow',[224,163,46]]]) P.push({ n, c });
 const COLS = 8, PW = 240, PH = 150, Y0 = 90;
 P.forEach((p, i) => { p.x = (i % COLS) * PW; p.y = Y0 + Math.floor(i / COLS) * PH; });
 // ---- ΔE2000 ----
@@ -64,7 +64,7 @@ async function readCounter(page, srcExpr) {
   const host = await ctx.newPage();
   await host.goto(`http://127.0.0.1:8787/host?key=${key}`);
   await sleep(700);
-  await host.click('text=Оба сразу'); await sleep(1500);
+  await host.click('label:has(input[name=mode][value=both])'); await sleep(1500);
   await host.selectOption('#bitrate', process.env.BR || '8000000');
   await host.selectOption('#fps', '50');
   const lanLink = await host.evaluate(() => document.getElementById('lanLink').value);
@@ -78,7 +78,7 @@ async function readCounter(page, srcExpr) {
     await page.bringToFront(); await sleep(1500);
     const got = await readPatches(page, expr);
     const rows = P.map((p, i) => { const s = got[i]; return { n: p.n, src: p.c, got: s.map(v => +v.toFixed(1)), dE: +de2000(lab(p.c), lab(s)).toFixed(2), gray: !!p.gray, chroma: p.gray ? +Math.hypot(lab(s)[1], lab(s)[2]).toFixed(2) : null }; });
-    // задержка: 15 замеров
+    // latency: 15 samples
     const lat = [];
     for (let k = 0; k < 15; k++) { const r = await readCounter(page, expr); const dt = await host.evaluate(n => window.__draw[n], r.n); if (dt) lat.push(r.t - dt); await sleep(150); }
     lat.sort((a, b) => a - b);
@@ -87,7 +87,7 @@ async function readCounter(page, srcExpr) {
   fs.writeFileSync(`color_${process.env.BR || '8000000'}.json`, JSON.stringify(out, null, 1));
   for (const [k, v] of Object.entries(out.paths)) {
     const d = v.rows.map(r => r.dE), gr = v.rows.filter(r => r.gray);
-    console.log(`${k}: ΔE2000 средн ${(d.reduce((a, b) => a + b) / d.length).toFixed(2)}, макс ${Math.max(...d).toFixed(2)} (${v.rows.find(r => r.dE === Math.max(...d)).n}); серый: макс ΔE ${Math.max(...gr.map(r => r.dE)).toFixed(2)}, макс цветность ${Math.max(...gr.map(r => r.chroma)).toFixed(2)}; чёрный→${gr[0].got} белый→${gr[gr.length-1].got}; задержка медиана ${v.latency.median} мс (${v.latency.min}–${v.latency.max})`);
+    console.log(`${k}: ΔE2000 mean ${(d.reduce((a, b) => a + b) / d.length).toFixed(2)}, max ${Math.max(...d).toFixed(2)} (${v.rows.find(r => r.dE === Math.max(...d)).n}); gray: max ΔE ${Math.max(...gr.map(r => r.dE)).toFixed(2)}, max chroma ${Math.max(...gr.map(r => r.chroma)).toFixed(2)}; black→${gr[0].got} white→${gr[gr.length-1].got}; latency median ${v.latency.median} ms (${v.latency.min}–${v.latency.max})`);
   }
   console.log('encoder:', enc);
   await b.close(); process.exit(0);

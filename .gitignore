@@ -7,6 +7,6 @@ app/gs.exe
 *.exe
 # Замеры
 tests/node_modules/
-tests/package*.json
 tests/*.log
 tests/color_*.json
+app/gs-test

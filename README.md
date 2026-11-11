@@ -6,6 +6,7 @@
 For colorists and editors: show a grade during a remote session or to everyone in the room, and get feedback as markers placed right on the frame.</p>
 
 <p align="center">Windows 10/11 · free · open source (MIT) · English / Русский<br>
+<a href="https://github.com/ushtozhish/gradestream/actions/workflows/build-and-measure.yml"><img src="https://github.com/ushtozhish/gradestream/actions/workflows/build-and-measure.yml/badge.svg" alt="Build and measure"></a><br>
 <a href="https://github.com/ushtozhish/gradestream/releases/latest"><b>⬇ Download the installer</b></a></p>
 
 ![GradeStream control window: live preview with client markers, internet and Wi-Fi links with a QR code](docs/img/control-window.png)
@@ -18,6 +19,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 ## Contents
 
 - [Why GradeStream](#why-gradestream)
+- [Remote editing review: sound in sync, smooth playback](#remote-editing-review-sound-in-sync-smooth-playback)
 - [Tour of the app](#tour-of-the-app)
   - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. Always 1920×1080](#4-always-19201080) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Client markers](#8-client-markers) · [9. Marker screenshots and the comment summary](#9-marker-screenshots-and-the-comment-summary) · [10. Viewers](#10-viewers) · [11. Tray icon, language, closing](#11-tray-icon-language-closing)
 - [Settings reference](#settings-reference)
@@ -30,6 +32,43 @@ For colorists and editors: show a grade during a remote session or to everyone i
 - **Built for grading reviews.** Clean Feed monitor in, a fixed 1920×1080 picture out, color-tagged so the decoder reconstructs the RGB values Resolve outputs ([measured](#color-what-to-trust-and-what-not-to): mean ΔE2000 0.22).
 - **Feedback lands on the frame.** The client taps the image and types a comment; you see it on top of your Clean Feed monitor, and a screenshot of the exact frame they meant is saved with the note.
 - **Remote or in the room.** Over the internet via Cloudflare Tunnel, or straight over Wi-Fi with no internet at all — or both at once.
+- **Also for editing reviews.** "Smooth & in sync" playback keeps sound in sync with the picture and frames evenly paced, so a remote director can judge cuts and timing ([measured](#remote-editing-review-sound-in-sync-smooth-playback)).
+
+## Remote editing review: sound in sync, smooth playback
+
+A director or producer can watch the edit remotely with sound: open the link, tap **Turn sound on**, and pick **Playback → Smooth & in sync** in GradeStream.
+
+**How it works.** Every frame and every 20 ms of audio is stamped with its capture time on one clock (audio: the Windows audio engine's capture timestamps where it provides them; video: the moment of capture). The viewer estimates how late things arrive and how much that varies, and plays everything at *capture time + the same delay*:
+
+- the **same delay** for sound and picture → they stay in sync;
+- a **buffer sized to the network's jitter** (0.12–0.7 s, adapts automatically) → frames come out evenly, so the rhythm of cuts isn't distorted by the network;
+- on Wi-Fi, the browser's own WebRTC lip-sync does the same, driven by sender reports that carry the capture clock.
+
+**Measured** (test bench: the control window flashes white at the start of every second while the test tone beeps at the same moment; the viewer logs when the flash is drawn and when the beep reaches the audio output; network jitter is simulated by delaying each message 0–120 ms):
+
+| | Sound vs picture (negative = sound ahead) | Frame pacing at 25 fps* |
+|---|---|---|
+| Internet, Smooth & in sync, no jitter | median −13…+17 ms, events −64…+29 ms | deviation median 9 ms |
+| Internet, Smooth & in sync, jitter 0–120 ms | median −12…−16 ms, events −66…+1 ms | deviation median 8–10 ms, **19%** of intervals >60 ms |
+| Internet, Lowest latency, jitter 0–120 ms | — (no sound) | deviation median 25–27 ms, **33–36%** of intervals >60 ms |
+| Wi-Fi (WebRTC), Smooth & in sync | −4…−11 ms (browser's estimate**) | as source |
+| Wi-Fi (WebRTC), Lowest latency | +17…+27 ms (browser's estimate**) | as source |
+
+<sub>* Deviation of display intervals from 40 ms. On this bench even without any jitter 14–15% of intervals exceed 60 ms because of the synthetic source and a 60 Hz display, so 19% under jitter is close to that floor, while "Lowest latency" doubles it. ** `estimatedPlayoutTimestamp` from WebRTC stats, not a flash/beep measurement.</sub>
+
+For reference, ITU-R BT.1359 puts the threshold of *detectability* at about 45 ms of sound ahead and 125 ms of sound behind the picture. All medians above are inside it. The measurements run automatically on GitHub on every change — see the latest results under [Actions → Build and measure](https://github.com/ushtozhish/gradestream/actions/workflows/build-and-measure.yml) (job summary).
+
+**What this is good for:** judging the cut, pacing, performance, sound-to-picture sync, music edits, rough and fine cut reviews; several people watching at once and leaving markers on frames.
+
+**What it is not:**
+
+- **Not frame-accurate playback.** GradeStream captures the screen. If the monitor's refresh rate isn't a multiple of the timeline frame rate (e.g. a 23.976/24p timeline on a 60 Hz monitor), the monitor itself already shows uneven cadence (3:2 pulldown), and the stream inherits it. For the most even motion set the Clean Feed monitor to a multiple of the timeline rate where possible (48/72/120 Hz for 24p, 50/100 Hz for 25p) and GradeStream's frame rate to the timeline rate.
+- **Not for judging a final mix.** Opus at 128–192 kbit/s is clean, but phone speakers and earbuds are not a mixing environment.
+- **Not real-time collaboration.** Viewers watch and comment; editing still happens on your machine.
+- **The sync buffer adds delay.** With Smooth & in sync, viewers see the picture 0.12–0.7 s later than with Lowest latency. Keep Lowest latency for interactive grading.
+- **Real-network results not measured.** Above is a simulated jitter of 0–120 ms. On a poor mobile connection, losses make TCP stall; pauses longer than the buffer still show as freezes.
+
+Versions before 2.11 played sound and picture independently, without synchronization, so sound lagged behind the picture.
 
 ## Tour of the app
 
@@ -89,6 +128,7 @@ The client always gets a 1920×1080 frame. If your monitor isn't 1080p, GradeStr
 
 - **Bitrate** — 4 / 8 / 12 / 16 / 24 Mbit/s. 8–12 suits a phone; use 4 for a weak connection, 16–24 when gradients and fine detail matter and the network allows.
 - **Frames/s** — 12 / 24 / 25 / 30 / 50 / 60. At 12 fps each frame gets about twice the bits of 25 fps: cleaner shadows and gradients while you tweak, choppier playback. Change it live.
+- **Playback** — **Lowest latency** (default, for grading: frames are shown the moment they arrive) or **Smooth & in sync** (for editing reviews: a 0.12–0.7 s buffer, even frame pacing, sound in sync). Sound is always synced when a viewer turns it on.
 - The line below shows the codec and whether the **hardware** encoder (NVENC / Quick Sync / AMF) is in use.
 
 <br clear="right">
@@ -100,7 +140,7 @@ The client always gets a 1920×1080 frame. If your monitor isn't 1080p, GradeStr
 - **No audio** — all bandwidth goes to the picture (default).
 - **Output device** — everything playing on a Windows output device (e.g. your speakers).
 - **Single application** — only one app and its child processes, e.g. only Resolve: no messenger pings or browser sounds reach the client (Windows 10 2004+).
-- **1 kHz test tone** — check that sound reaches the client before the session.
+- **Test tone** — a 1 kHz beep at the start of every second, on the same clock as the picture: check that sound reaches the client and that it lands together with what's on screen.
 - **Audio bitrate** 64 / 128 / 192 kbit/s (Opus), plus a level meter. The choice is remembered; an app is found again by name after a restart.
 
 The client hears sound after tapping **Turn sound on** (phones only allow audio after a tap). Over the internet, no audio data is sent to a client until they tap it; on Wi-Fi the audio travels with the video and is simply unmuted.
@@ -174,6 +214,7 @@ All settings are remembered between launches.
 | Resolution conversion | dialog after choosing a screen; **change** under the preview | as is · downscale · upscale · 1:1 center crop · crop to 16:9 · fit with bars | recommended option for your monitor |
 | Bitrate | Quality | 4 / 8 / 12 / 16 / 24 Mbit/s | 8 Mbit/s |
 | Frames per second | Quality | 12 / 24 / 25 / 30 / 50 / 60 | 25 |
+| Playback on viewers | Quality | Lowest latency · Smooth & in sync | Lowest latency |
 | Audio source | Audio | none · output device · single application · test tone | none |
 | Audio bitrate | Audio | 64 / 128 / 192 kbit/s | 128 kbit/s |
 | Markers on top of the Clean Feed | Client markers | on / off · monitor | on · auto-detected |
@@ -234,7 +275,7 @@ All settings are remembered between launches.
 
 ### Latency
 
-**Measured** (test bench, one machine, software encoder, no real network; [details](docs/MEASUREMENTS.md)). From drawing a frame to showing it at the viewer:
+**Measured** (test bench, one machine, software encoder, no real network; [details](docs/MEASUREMENTS.md)). From drawing a frame to showing it at the viewer, in the default **Lowest latency** playback (**Smooth & in sync** adds its 0.12–0.7 s buffer on top):
 
 | Path | Median | Range |
 |---|---|---|
@@ -335,7 +376,7 @@ The script downloads the official cloudflared, verifies Cloudflare's signature, 
 |---|---|
 | `app/` | the app: server, tunnel, WebRTC, audio capture (WASAPI), on-screen markers, tray; pages `web/host.html` (control window) and `web/view.html` (viewer) |
 | `installer/` | per-user installer (no admin rights), "Installed apps" registration, shortcuts |
-| `tests/colortest.js` | color and latency measurement — [how to run](docs/MEASUREMENTS.md) |
+| `tests/` | measurements: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
 | `tools/mkicon.py` | icon and Windows resource generation |
 
 ## Limitations

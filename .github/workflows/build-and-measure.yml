@@ -1,0 +1,59 @@
+name: Build and measure
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: Build Windows installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27'
+      - name: Install osslsigncode (to verify cloudflared's signature)
+        run: sudo apt-get update && sudo apt-get install -y osslsigncode
+      - name: Build
+        run: ./build/build.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: GradeStream-Setup
+          path: dist/*.exe
+
+  measure:
+    name: Measure color, A/V sync, frame pacing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Build the app for Linux (test build)
+        working-directory: app
+        run: go build -mod=mod -o gs-test .
+      - name: Install Playwright Chromium
+        working-directory: tests
+        run: npm install && npx playwright install --with-deps chromium
+      - name: Run measurements
+        run: ./tests/run-all.sh
+      - name: Publish results
+        if: always()
+        run: cat tests/results.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: measurements
+          path: |
+            tests/results.md
+            tests/color_*.json
+            tests/gs.log
