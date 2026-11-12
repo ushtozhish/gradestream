@@ -45,11 +45,13 @@
   #scHead { display:flex; align-items:stretch; background:#1a1a1a; border-bottom:1px solid #262626; overflow-x:auto; scrollbar-width:none; }
   #scHead::-webkit-scrollbar { display:none; }
   #scHead button { background:transparent; border:0; border-radius:0; color:#8a8a8a; white-space:nowrap; flex:0 0 auto;
-                   font:500 11.5px/1 -apple-system, "Segoe UI", Roboto, sans-serif; padding:10px 11px; margin:0 1px; letter-spacing:.02em; }
+                   font:400 11px/1 -apple-system, "Segoe UI", Roboto, sans-serif; padding:9px 7px 8px; margin:0 1px; letter-spacing:.01em; }
+  #scHead .tool { display:flex; align-items:center; padding:0 9px; color:#a8a8a8; }
+  #scHead .tool svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.2; }
+  #scHead .tool.on { color:#e0a040; }
   #scHead button:active { background:#2b2b2b; }
-  #scHead button[data-sc].on { color:#ededed; box-shadow:inset 0 -2px 0 #e0a040; }
+  #scHead button[data-sc].on { color:#ededed; box-shadow:inset 0 -1px 0 #e0a040; }
   #scHead .sp { flex:1; min-width:6px; }
-  #scHead .tool { color:#a8a8a8; }
   #scBody { position:absolute; display:flex; flex-direction:column; gap:3px; }
   #scBody .row { display:flex; gap:3px; flex:1 1 0; min-height:0; }
   #scBody .pic { background:#000; min-width:0; }
@@ -68,13 +70,13 @@
 <div id="note"></div>
 <div id="scopes">
   <div id="scHead">
-    <button data-sc="wave" data-full="Waveform" data-short="Wave">Waveform</button>
-    <button data-sc="parade" data-full="Парад|Parade" data-short="Парад|Parade">Парад</button>
-    <button data-sc="vector" data-full="Вектороскоп|Vectorscope" data-short="Вектор|Vector">Вектороскоп</button>
-    <button data-sc="hist" data-full="Гистограмма|Histogram" data-short="Гист.|Hist.">Гистограмма</button>
+    <button data-sc="wave">Waveform</button>
+    <button data-sc="parade" data-en="Parade">Парад</button>
+    <button data-sc="vector" data-en="Vectorscope">Вектороскоп</button>
+    <button data-sc="hist" data-en="Histogram">Гистограмма</button>
     <span class="sp"></span>
-    <button class="tool txt" id="scBig"></button>
-    <button class="tool" id="scClose" title="Закрыть скопы" data-en-title="Close scopes">✕</button>
+    <button class="tool" id="scBig"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="8" height="11"/><rect x="11" y="2.5" width="3.5" height="5"/><rect x="11" y="9" width="3.5" height="4.5"/></svg></button>
+    <button class="tool" id="scClose" title="Закрыть скопы" data-en-title="Close scopes"><svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
   </div>
   <div id="scBody"></div>
 </div>
@@ -537,12 +539,9 @@ const Scopes = (() => {
     if (!st.open) return;
     const list = ORDER.filter(k => st.on[k]);
     for (const k of list) if (!views[k]) mk(k);
-    const narrow = window.innerWidth < 560;
-    for (const b of panel.querySelectorAll('[data-sc]')) {
-      b.classList.toggle('on', !!st.on[b.dataset.sc]);
-      const t = (narrow ? b.dataset.short : b.dataset.full).split('|'); b.textContent = L(t[0], t[1] || t[0]);
-    }
-    $('scBig').textContent = narrow ? (st.big ? L('Картинка', 'Picture') : L('Крупно', 'Big')) : (st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes'));
+    for (const b of panel.querySelectorAll('[data-sc]')) b.classList.toggle('on', !!st.on[b.dataset.sc]);
+    $('scBig').title = st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes');
+    $('scBig').classList.toggle('on', st.big);
     const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 6;
     const bottom = bar.classList.contains('hidden') ? 6 : bar.getBoundingClientRect().height + 14;
     const H = window.innerHeight - top - bottom, land = W > H * 1.15, m = 6, gap = 3;

@@ -177,6 +177,7 @@ Scopes never cover the picture. When they open, the picture moves aside and the 
 - **Big picture** — the picture keeps about two thirds of the screen, the scopes stack next to it (below it when the phone is upright).
 - **Big scopes** — the scopes take the screen and the picture becomes one smaller tile (a strip on top when upright). Markers can still be placed on it.
 - Tabs at the top switch each scope on and off; the remaining scopes grow to fill the freed space.
+- The icon at the top right switches between the two layouts; the cross closes the scopes.
 - The look follows Resolve: black scope area, white 0–1023 scale every 128, thin graticule over the trace; the vectorscope has 75% color-bar targets, 100% dots and the skin-tone line.
 
 <p align="center"><img src="docs/img/scopes-big-portrait.png" width="300" alt="Big scopes with the phone upright: picture strip on top, waveform and vectorscope below"></p>
