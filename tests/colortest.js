@@ -76,6 +76,11 @@ async function readCounter(page, srcExpr) {
   const out = { encoder: enc, bitrate: process.env.BR || '8000000', paths: {} };
   for (const [name, page, expr] of [['internet (WebCodecs)', net, "document.getElementById('c')"], ['wifi (WebRTC)', lan, "document.getElementById('lv')"]]) {
     await page.bringToFront(); await sleep(1500);
+    // wait until the picture is really playing (a slow CI machine can take longer to start WebRTC)
+    await page.waitForFunction(expr => { const s = eval(expr); if (s.tagName === 'VIDEO' && (s.readyState < 2 || !s.videoWidth)) return false;
+      const c = document.createElement('canvas'); c.width = 64; c.height = 36; const g = c.getContext('2d'); g.drawImage(s, 0, 0, 64, 36);
+      const d = g.getImageData(0, 0, 64, 36).data; let m = 0; for (let i = 0; i < d.length; i += 4) m = Math.max(m, d[i], d[i + 1], d[i + 2]); return m > 100; }, expr, { timeout: 30000, polling: 500 }).catch(() => console.log(name + ': picture did not start within 30 s'));
+    await sleep(1000);
     const got = await readPatches(page, expr);
     const rows = P.map((p, i) => { const s = got[i]; return { n: p.n, src: p.c, got: s.map(v => +v.toFixed(1)), dE: +de2000(lab(p.c), lab(s)).toFixed(2), gray: !!p.gray, chroma: p.gray ? +Math.hypot(lab(s)[1], lab(s)[2]).toFixed(2) : null }; });
     // latency: 15 samples

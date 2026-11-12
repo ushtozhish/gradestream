@@ -151,38 +151,41 @@ The client hears sound after tapping **Turn sound on** (phones only allow audio 
 
 <p align="center"><img src="docs/img/client-phone-mark.png" width="760" alt="Client's phone in marker mode: Tap a spot on the frame"></p>
 
-| Button | What it does |
+The client gets one row of small tiles; a tile that is on turns orange. Tap the picture to hide or bring back the tiles.
+
+| Tile | What it does |
 |---|---|
-| **Turn sound on** | starts audio (shown only when you stream audio) |
-| **Mark a point** | then tap the frame and type a comment — it reaches you instantly |
-| **Fullscreen** | full-screen picture; on iPhone it uses the system video player |
-| **Scopes** | waveform, parade, vectorscope, histogram — [see below](#8-scopes-for-the-client) (shown when you allow it) |
+| **Speaker** | sound on / off (shown only when you stream audio) |
+| **Pin** | marker mode: tap the frame and type a comment — it reaches you instantly |
+| **Scope** | waveform, parade, vectorscope, histogram — [see below](#8-scopes-for-the-client) (shown when you allow it) |
+| **Frame corners** | full-screen picture; on iPhone it uses the system video player |
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
-| **Hide** | hides the buttons; tap the screen to bring them back |
+| **Arrow down** | hides the tiles |
 
 The page follows the language of the client's phone (English or Russian). With the internet link it also keeps the phone screen from dimming.
 
 ### 8. Scopes for the client
 
-The client can open **waveform, RGB parade, vectorscope and histogram** right on the phone — the button **Scopes** in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once).
+The client can open **waveform, RGB parade, vectorscope and histogram** right on the phone — the **Scopes** tile in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once).
 
-Two layouts, one tap apart:
+Scopes never cover the picture. When they open, the picture moves aside and shrinks, and the scopes get their own dark area. Two layouts, one tap apart:
 
-| Big picture (scopes in a corner) | Big scopes (picture in a small window) |
+| Big picture | Big scopes |
 |---|---|
-| <img src="docs/img/scopes-corner.png" width="420" alt="Waveform and vectorscope in a small window over the picture"> | <img src="docs/img/scopes-big.png" width="420" alt="Waveform, parade and vectorscope full screen, picture in a small window"> |
+| <img src="docs/img/scopes-corner.png" width="420" alt="Picture on the left, waveform, parade and vectorscope in a column on the right"> | <img src="docs/img/scopes-big.png" width="420" alt="Waveform, parade and vectorscope large, picture small on the right"> |
 
-- **Big picture** — a small window over the frame with any set of scopes; drag it by its top row, sizes S / M / L / XL.
-- **Big scopes** — scopes fill the screen, the picture shrinks to a small window (on the right when the phone is sideways, on top when upright). Markers can still be placed on the small picture.
-- Waveform in **Y** (Rec.709 luma) or **RGB** overlay; vectorscope at **1× / 2× / 4×** with 75% color-bar targets, 100% dots and the skin-tone line; trace brightness in three steps. The 0–1023 scale matches Resolve.
+- **Big picture** — the picture keeps about two thirds of the screen, the scopes line up next to it (below it when the phone is upright).
+- **Big scopes** — the scopes take the screen, the picture becomes a small window. Markers can still be placed on it.
+- Tabs at the top switch each scope on and off; the layout arranges whatever is on so every scope is as large as possible.
+- The look follows Resolve: 0–1023 scale every 128, thin gray graticule, neutral trace; the vectorscope has 75% color-bar targets, 100% dots and the skin-tone line.
 
-<p align="center"><img src="docs/img/scopes-big-portrait.png" width="300" alt="Big scopes with the phone upright"></p>
+<p align="center"><img src="docs/img/scopes-big-portrait.png" width="300" alt="Scopes with the phone upright: picture on top, waveform and vectorscope below"></p>
 
-**What the scopes show, honestly.** They are computed on the phone from **the picture that arrived** — 8-bit, after H.264 — from a 512×576 copy of the frame, up to 10 times a second (less often on a slow phone). So they describe what the client actually receives, not Resolve's internal 32-bit image:
+**What the scopes show, honestly.** They are computed on the phone from **the picture that arrived** — 8-bit, after H.264 — from a 768×432 copy of the frame, up to 10 times a second (less often on a slow phone). So they describe what the client actually receives, not Resolve's internal 32-bit image:
 
-- levels, balance and saturation agree with the source within about 1%: in the automated test (75% color bars + gray ramp, both paths) bar levels on the waveform are off by at most 1.2 of 255 and vectorscope traces sit within 2.2 px of the targets (the target box is ±5 px);
+- levels, balance and saturation agree with the source: in the automated test (75% color bars + gray ramp, both paths) bar levels on the waveform are off by at most 2.5 of 255 at the smallest scope size and vectorscope traces sit within 2 px of the targets;
 - tiny isolated highlights may be averaged away by the downscaled copy;
-- smooth synthetic gradients show fine horizontal combing — that is the real distribution of 8-bit levels after compression, which Resolve's scopes (fed before compression) don't have;
+- the trace is spread evenly inside each 8-bit step, like a continuous signal in Resolve, so it doesn't break into horizontal lines; the position of the trace doesn't change;
 - for grading decisions use Resolve's own scopes; the client scopes are for talking about the same picture with the same tools.
 
 ### 9. Client markers

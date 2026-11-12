@@ -37,7 +37,9 @@ const CbCr = c => { const y = Y709(c); return [(c[2] - y) / 1.8556 / 255, (c[0] 
     await v.goto(url); await sleep(5000);
     await v.bringToFront();
     const btnShown = await v.evaluate(() => getComputedStyle(document.getElementById('btnScopes')).display !== 'none');
-    await v.click('#btnScopes'); await sleep(1500);
+    await v.click('#btnScopes');
+    await v.waitForFunction(() => { const V = window.__scopeViews; return V && ['wave', 'parade', 'vector', 'hist'].every(k => V[k] && V[k].w > 0); }, null, { timeout: 30000 }).catch(() => {});
+    await sleep(1500);
     const r = await v.evaluate(([BARS]) => {
       const V = window.__scopeViews, out = {};
       const img = k => { const x = V[k]; return x.dctx.getImageData(0, 0, x.w, x.h).data; };
