@@ -38,11 +38,11 @@
           padding:5px 10px; border:1px solid #2e2e2e; border-radius:2px; font-size:12px; display:none; max-width:calc(100vw - 32px); width:max-content; text-align:center; box-sizing:border-box; }
 
   /* ---------- Скопы: раздельная раскладка, ничего поверх картинки ---------- */
-  #scopes { position:fixed; inset:0; z-index:5; display:none; background:#1b1b1b; box-sizing:border-box;
+  #scopes { position:fixed; inset:0; z-index:5; display:none; background:#1a1a1a; box-sizing:border-box;
             padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
             font:11px/1 -apple-system, "Segoe UI", Roboto, sans-serif; color:#9a9a9a; }
   #scopes.show { display:block; }
-  #scHead { display:flex; align-items:stretch; background:#222; border-bottom:1px solid #121212; overflow-x:auto; scrollbar-width:none; }
+  #scHead { display:flex; align-items:stretch; background:#1a1a1a; border-bottom:1px solid #262626; overflow-x:auto; scrollbar-width:none; }
   #scHead::-webkit-scrollbar { display:none; }
   #scHead button { background:transparent; border:0; border-radius:0; color:#8a8a8a; white-space:nowrap; flex:0 0 auto;
                    font:500 11.5px/1 -apple-system, "Segoe UI", Roboto, sans-serif; padding:10px 11px; margin:0 1px; letter-spacing:.02em; }
@@ -50,10 +50,12 @@
   #scHead button[data-sc].on { color:#ededed; box-shadow:inset 0 -2px 0 #e0a040; }
   #scHead .sp { flex:1; min-width:6px; }
   #scHead .tool { color:#a8a8a8; }
-  #scBody { position:absolute; display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; justify-content:center; }
-  #scBody canvas { position:static; display:block; background:#0c0c0c; border:1px solid #2a2a2a; }
-  body.scopes-on #c, body.scopes-on #lv { inset:auto; z-index:6; width:var(--picW); height:calc(var(--picW) * 9 / 16); left:var(--picL); top:var(--picT);
-                                          border:1px solid #2e2e2e; box-sizing:border-box; background:#000; }
+  #scBody { position:absolute; display:flex; flex-direction:column; gap:3px; }
+  #scBody .row { display:flex; gap:3px; flex:1 1 0; min-height:0; }
+  #scBody .pic { background:#000; min-width:0; }
+  #scBody canvas { position:static; display:block; background:#000; flex:1 1 0; min-width:0; width:100%; height:100%; }
+  body.scopes-on #c, body.scopes-on #lv { inset:auto; z-index:6; width:var(--picW); height:var(--picH); left:var(--picL); top:var(--picT);
+                                          border:0; box-sizing:border-box; background:#000; }
 </style>
 </head>
 <body>
@@ -521,10 +523,11 @@ const Scopes = (() => {
     const W = Math.max(40, Math.round(v.cv.clientWidth * dpr)), H = Math.max(20, Math.round(v.cv.clientHeight * dpr));
     if (v.cv.width !== W || v.cv.height !== H) { v.cv.width = W; v.cv.height = H; }
     const wave = v.kind === 'wave' || v.kind === 'parade';
-    v.dpr = dpr; v.gx = wave ? Math.round(30 * dpr) : 0; v.pad = wave ? Math.round(8 * dpr) : v.kind === 'hist' ? Math.round(14 * dpr) : 0;
+    v.dpr = dpr; v.gx = wave ? Math.round(30 * dpr) : 0; v.pad = wave ? Math.round(9 * dpr) : v.kind === 'hist' ? Math.round(14 * dpr) : 0;
     let w, h;
-    if (v.kind === 'vector') { w = h = Math.min(W, H, 720); }
-    else { w = Math.min(1200, W - v.gx - (wave ? Math.round(6 * dpr) : 0)); h = Math.min(600, H - 2 * v.pad); }
+    if (v.kind === 'vector') { w = h = Math.min(W, H, 900) - Math.round(4 * dpr); }
+    // по высоте не больше ~320 строк: выборка 432 строки, выше след становится редким — дальше плавное растяжение, как в Resolve
+    else { w = Math.min(1400, W - v.gx - Math.round((wave ? 8 : 20) * dpr)); h = Math.min(wave ? 320 : 400, H - 2 * v.pad); }
     if (w !== v.w || h !== v.h) { v.w = v.data.width = w; v.h = v.data.height = h; v.img = v.dctx.createImageData(w, h); }
     return v;
   }
@@ -532,44 +535,68 @@ const Scopes = (() => {
   // ---- раскладка: картинка и скопы не перекрываются ----
   function layout() {
     if (!st.open) return;
-    body.innerHTML = '';
     const list = ORDER.filter(k => st.on[k]);
-    for (const k of list) { if (!views[k]) mk(k); body.appendChild(views[k].cv); }
+    for (const k of list) if (!views[k]) mk(k);
     const narrow = window.innerWidth < 560;
     for (const b of panel.querySelectorAll('[data-sc]')) {
       b.classList.toggle('on', !!st.on[b.dataset.sc]);
       const t = (narrow ? b.dataset.short : b.dataset.full).split('|'); b.textContent = L(t[0], t[1] || t[0]);
     }
     $('scBig').textContent = narrow ? (st.big ? L('Картинка', 'Picture') : L('Крупно', 'Big')) : (st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes'));
-    const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 8;
-    const bottom = bar.classList.contains('hidden') ? 8 : bar.getBoundingClientRect().height + 16;
-    const H = window.innerHeight - top - bottom, land = W > H * 1.15, m = 8;
-    let picW, picL, picT = top, ax, ay = top, aw, ah;
-    if (land) {
-      const share = st.big ? 0.3 : 0.64;                     // доля ширины под картинку
-      picW = Math.min((W - 3 * m) * share, H * 16 / 9);
-      if (st.big) { picL = W - m - picW; ax = m; } else { picL = m; ax = picL + picW + m; }
-      aw = W - picW - 3 * m; ah = H;
-      if (!st.big) picT = top + Math.max(0, (H - picW * 9 / 16) / 2);   // картинка по центру по высоте
-    } else {
-      picW = st.big ? Math.min(W - 2 * m, W * 0.62) : W - 2 * m;
-      picL = (W - picW) / 2; ax = m; aw = W - 2 * m; ay = top + picW * 9 / 16 + m; ah = H - picW * 9 / 16 - m;
-    }
-    const bs = document.body.style;
-    bs.setProperty('--picW', picW + 'px'); bs.setProperty('--picL', picL + 'px'); bs.setProperty('--picT', picT + 'px');
+    const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 6;
+    const bottom = bar.classList.contains('hidden') ? 6 : bar.getBoundingClientRect().height + 14;
+    const H = window.innerHeight - top - bottom, land = W > H * 1.15, m = 6, gap = 3;
+    const bs = document.body.style, setPic = (l, t, w, h) => { bs.setProperty('--picL', l + 'px'); bs.setProperty('--picT', t + 'px'); bs.setProperty('--picW', w + 'px'); bs.setProperty('--picH', (h || w * 9 / 16) + 'px'); };
+    let ax = m, ay = top, aw = W - 2 * m, ah = H, items = list.slice();
+    if (!st.big) {
+      // «Картинка крупно»: картинка ~2/3 ширины (сверху во всю ширину, если телефон вертикально), скопы рядом
+      if (land) {
+        const picW = Math.min((W - 3 * m) * 0.64, H * 16 / 9);
+        setPic(m, top, picW, H);                             // колонка во всю высоту, картинка по центру на чёрном
+        ax = m + picW + gap; aw = W - picW - m - gap - m;
+      } else {
+        const picW = W - 2 * m; setPic(m, top, picW);
+        ay = top + picW * 9 / 16 + gap; ah = H - picW * 9 / 16 - gap;
+      }
+    } else if (!land) {
+      // вертикально: картинка — полоса во всю ширину сверху (~18% высоты), скопы под ней
+      const ph = Math.min(H * 0.18, (W - 2 * m) * 9 / 16);
+      setPic(m, top, W - 2 * m, ph);
+      ay = top + ph + gap; ah = H - ph - gap;
+    } else items = null;                                    // горизонтально: картинка — одна из ячеек сетки (меньше остальных)
     Object.assign(body.style, { left: ax + 'px', top: ay + 'px', width: aw + 'px', height: ah + 'px' });
-    // сетка: перебираем число столбцов и берём ту, где скопы крупнее всего
-    const gap = 6; let best = null;
-    for (let cols = 1; cols <= list.length; cols++) {
-      const rows = Math.ceil(list.length / cols), cw = (aw - gap * (cols - 1)) / cols, ch = (ah - gap * (rows - 1)) / rows;
-      const area = list.reduce((a, k) => { const w = Math.min(cw, ch * ASPECT[k]); return a + w * w / ASPECT[k]; }, 0);
-      if (!best || area > best.area) best = { area, cw, ch };
+    // Ячейки заполняют всю область без пустот. Перебираем число столбцов и берём раскладку, где скопам
+    // достаётся самая полезная площадь (waveform хорош от 1,2:1 до 3,5:1, вектороскоп — квадрат)
+    const GROW = { pic: 0.62 };
+    const useful = (k, cw, ch) => k === 'pic' ? 0 : k === 'vector' ? Math.min(cw, ch) ** 2 : Math.min(cw, ch * 3.5) * Math.min(ch, cw / 1.2);
+    const big = st.big && land;
+    const arrange = cols => { const it = !big ? list : (() => { const a = list.slice(); a.splice(Math.min(cols - 1, a.length), 0, 'pic'); return a; })();
+      const rows = []; for (let i = 0; i < it.length; i += cols) rows.push(it.slice(i, i + cols)); return rows; };
+    let best = null;
+    for (let cols = 1; cols <= list.length + 1; cols++) {
+      const rows = arrange(cols), ch = (ah - gap * (rows.length - 1)) / rows.length;
+      let score = 0, picOk = true;
+      for (const row of rows) {
+        const tot = row.reduce((a, k) => a + (GROW[k] || 1), 0), free = aw - gap * (row.length - 1);
+        for (const k of row) { const cw = free * (GROW[k] || 1) / tot; score += useful(k, cw, ch);
+          if (k === 'pic' && Math.min(cw, ch * 16 / 9) < Math.min(W, H * 16 / 9) * 0.22) picOk = false; }   // картинка не меньше ~1/4 экрана
+      }
+      if (!picOk) score *= 0.3;
+      if (!best || score > best.score) best = { score, rows };
     }
-    for (const k of list) {
-      const w = Math.floor(Math.min(best.cw, best.ch * ASPECT[k]));
-      views[k].cv.style.width = w + 'px'; views[k].cv.style.height = Math.floor(w / ASPECT[k]) + 'px';
+    body.innerHTML = '';
+    let picCell = null;
+    for (const r of best.rows) {
+      const row = document.createElement('div'); row.className = 'row';
+      for (const k of r) {
+        if (k === 'pic') { picCell = document.createElement('div'); picCell.className = 'pic'; picCell.style.flex = GROW.pic + ' 1 0'; row.appendChild(picCell); }
+        else row.appendChild(views[k].cv);
+      }
+      body.appendChild(row);
     }
-    body.style.alignContent = land && !st.big ? 'center' : 'flex-start';
+    if (picCell) {                                          // картинка вписывается в свою ячейку по центру
+      const r = picCell.getBoundingClientRect(); setPic(r.left, r.top, r.width, r.height);
+    }
     dirty = true;
   }
   function show(open) {
@@ -654,20 +681,21 @@ const Scopes = (() => {
   }
 
   // ---- вывод с сеткой в духе Resolve: тонкие серые линии, шкала 0–1023 через 128 ----
-  const GRID = 'rgba(255,255,255,.09)', GRID_MAIN = 'rgba(255,255,255,.17)', TXT = '#767676';
+  const GRID = 'rgba(255,255,255,.14)', GRID_MAIN = 'rgba(255,255,255,.26)', TXT = 'rgba(255,255,255,.6)';
   function label(c, t, x, y, dpr, align, color) { c.font = `${9 * dpr}px -apple-system, "Segoe UI", Roboto, sans-serif`; c.fillStyle = color || TXT; c.textAlign = align || 'left'; c.textBaseline = 'middle'; c.fillText(t, x, y); }
   const crisp = (x) => Math.round(x) + .5;
   function draw(v) {
     const c = v.cv.getContext('2d'), W = v.cv.width, H = v.cv.height;
-    c.fillStyle = '#0c0c0c'; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     return c;
   }
   function gridWave(v, parade) {
     const c = draw(v), W = v.cv.width, H = v.cv.height, dpr = v.dpr, gx = v.gx, pad = v.pad;
-    c.drawImage(v.data, gx, pad, v.w, v.h);
-    const y0 = pad, y1 = pad + v.h - 1, x1 = gx + v.w;
-    const every = v.h / dpr > 140 ? 128 : 256;
+    const dw = W - gx - Math.round(8 * dpr), dh = H - 2 * pad;
+    c.drawImage(v.data, gx, pad, dw, dh);
+    const y0 = pad, y1 = pad + dh - 1, x1 = gx + dw, sx = dw / v.w;
+    const every = dh / dpr > 140 ? 128 : 256;
     c.lineWidth = 1;
     for (let lv10 = 0; lv10 <= 1024; lv10 += 128) {
       const val = Math.min(1023, lv10), y = crisp(y1 - val / 1023 * (y1 - y0));
@@ -676,13 +704,13 @@ const Scopes = (() => {
       if (lv10 % every === 0 || val === 1023) label(c, val, gx - 5 * dpr, y, dpr, 'right');
     }
     if (parade) {
-      const cols = ['#c86464', '#64b464', '#6487c8'];
+      const cols = ['#e07070', '#70c070', '#7095e0'];
       ['R', 'G', 'B'].forEach((t, i) => {
-        const xa = gx + i * (v.pw + v.gap);
-        c.strokeStyle = GRID_MAIN; c.strokeRect(crisp(xa), crisp(y0), Math.round(v.pw) - 1, Math.round(y1 - y0));
-        label(c, t, xa + v.pw - 4 * dpr, y0 + 7 * dpr, dpr, 'right', cols[i]);
+        const xa = gx + i * (v.pw + v.gap) * sx, pw = v.pw * sx;
+        c.strokeStyle = GRID_MAIN; c.strokeRect(crisp(xa), crisp(y0), Math.round(pw) - 1, Math.round(y1 - y0));
+        label(c, t, xa + pw - 4 * dpr, y0 + 7 * dpr, dpr, 'right', cols[i]);
       });
-    } else { c.strokeStyle = GRID_MAIN; c.strokeRect(crisp(gx), crisp(y0), v.w - 1, Math.round(y1 - y0)); }
+    } else { c.strokeStyle = GRID_MAIN; c.strokeRect(crisp(gx), crisp(y0), Math.round(dw) - 1, Math.round(y1 - y0)); }
   }
   function gridVector(v) {
     const c = draw(v), W = v.cv.width, H = v.cv.height, dpr = v.dpr;
@@ -704,7 +732,7 @@ const Scopes = (() => {
     const T = [['R', 255, 0, 0], ['Mg', 255, 0, 255], ['B', 0, 0, 255], ['Cy', 0, 255, 255], ['G', 0, 255, 0], ['Yl', 255, 255, 0]];
     for (const [t, R, G, B] of T) {
       const [cb, cr] = cbcr(R * .75, G * .75, B * .75), x = cx + cb * k, y = cy - cr * k, bs = Math.max(6, Math.round(8 * s));
-      c.strokeStyle = 'rgba(255,255,255,.38)'; c.strokeRect(crisp(x - bs / 2), crisp(y - bs / 2), bs, bs);
+      c.strokeStyle = 'rgba(255,255,255,.5)'; c.strokeRect(crisp(x - bs / 2), crisp(y - bs / 2), bs, bs);
       const [cb1, cr1] = cbcr(R, G, B); c.fillStyle = 'rgba(255,255,255,.32)'; c.fillRect(Math.round(cx + cb1 * k) - dpr, Math.round(cy - cr1 * k) - dpr, 2 * dpr, 2 * dpr);
       const lx = cx + cb1 * k * 1.12, ly = cy - cr1 * k * 1.12;
       label(c, t, Math.min(W - 8 * dpr, Math.max(8 * dpr, lx)), Math.min(H - 7 * dpr, Math.max(7 * dpr, ly)), dpr, 'center');
