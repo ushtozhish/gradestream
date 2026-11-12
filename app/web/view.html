@@ -11,6 +11,10 @@
                font:15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select:none; user-select:none; }
   canvas, #lv { position:fixed; inset:0; width:100%; height:100%; object-fit:contain; background:#000; }
   #lv { display:none; }
+  /* iPhone: полный экран внутри страницы. Страница становится чуть прокручиваемой — свайп вверх сворачивает панели Safari */
+  html.immersive, html.immersive body { overflow-y:auto; height:auto; }
+  html.immersive #spacer { display:block; }
+  #spacer { display:none; height:calc(100vh + 160px); }
   #status { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:28px; color:#999; pointer-events:none; }
   /* Нижняя панель: строгие плоские плитки, появляются и исчезают по очереди */
   #bar { position:fixed; left:50%; bottom:calc(10px + env(safe-area-inset-bottom)); transform:translateX(-50%);
@@ -32,6 +36,15 @@
   #info { position:fixed; top:calc(8px + env(safe-area-inset-top)); left:10px; font-size:11px; color:#888; display:none; background:rgba(0,0,0,.5); padding:2px 6px; border-radius:4px; }
   #pause { position:fixed; top:calc(8px + env(safe-area-inset-top)); right:10px; font-size:11px; letter-spacing:.04em; color:#111; background:#e0a040; padding:3px 8px; border-radius:2px; display:none; }
   #hint { position:fixed; top:calc(40px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); background:rgba(224,160,64,.95); color:#111; padding:5px 10px; border-radius:2px; font-size:12px; display:none; white-space:nowrap; }
+  /* Комментарий к метке — своя строка ввода (системное окно браузера выбрасывает из полного экрана) */
+  #cbox { position:fixed; left:50%; bottom:calc(46px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:9; display:none;
+          width:min(520px, calc(100vw - 24px)); background:rgba(20,20,20,.96); border:1px solid #3a3a3a; border-radius:2px; box-sizing:border-box; }
+  #cbox.show { display:flex; }
+  #ctext { flex:1; min-width:0; background:transparent; border:0; outline:none; color:#eee; font:16px -apple-system, "Segoe UI", Roboto, sans-serif; padding:9px 10px; }
+  #ctext::placeholder { color:#777; }
+  #cbox button { background:transparent; border:0; border-left:1px solid #333; color:#e0a040; font:500 13px -apple-system, "Segoe UI", Roboto, sans-serif; padding:0 14px; white-space:nowrap; }
+  #cbox button#ccancel { color:#999; padding:0 12px; }
+  .ping.hold { animation:none; }
   .ping { position:fixed; width:28px; height:28px; margin:-14px 0 0 -14px; border:2px solid #e0a040; border-radius:50%; pointer-events:none; animation:fade 1.5s forwards; }
   @keyframes fade { from { transform:scale(.5); opacity:1 } to { transform:scale(1.6); opacity:0 } }
   #note { position:fixed; left:50%; bottom:calc(46px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:rgba(20,20,20,.92); color:#ccc;
@@ -49,6 +62,7 @@
   #scHead .tool { display:flex; align-items:center; padding:0 9px; color:#a8a8a8; }
   #scHead .tool svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.2; }
   #scHead .tool.on { color:#e0a040; }
+  #scHead .tool.txt { padding:0 9px; font-size:11px; min-width:58px; justify-content:center; }
   #scHead button:active { background:#2b2b2b; }
   #scHead button[data-sc].on { color:#ededed; box-shadow:inset 0 -1px 0 #e0a040; }
   #scHead .sp { flex:1; min-width:6px; }
@@ -77,12 +91,18 @@
     <button data-sc="parade">Parade</button>
     <button data-sc="vector">Vectorscope</button>
     <span class="sp"></span>
-    <button class="tool" id="scColor" title="Цвет / ч/б" data-en-title="Color / mono"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
+    <button class="tool txt" id="scColor" title="Режим цвета скопов" data-en-title="Scope color mode">Colorize</button>
     <button class="tool" id="scBig"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="8" height="11"/><rect x="11" y="2.5" width="3.5" height="5"/><rect x="11" y="9" width="3.5" height="4.5"/></svg></button>
     <button class="tool" id="scClose" title="Закрыть скопы" data-en-title="Close scopes"><svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
   </div>
   <div id="scBody"></div>
 </div>
+<div id="spacer"></div>
+<form id="cbox" autocomplete="off">
+  <input id="ctext" enterkeyhint="send" placeholder="Комментарий к точке (можно пусто)" data-en-ph="Comment for this point (optional)">
+  <button type="submit" id="csend" data-en="Send">Отправить</button>
+  <button type="button" id="ccancel" title="Отмена" data-en-title="Cancel">✕</button>
+</form>
 <div id="bar">
   <button id="btnSound" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span class="t" data-en="Sound">Звук</span></button>
   <button id="btnMark" class="tile"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span class="t" data-en="Mark">Метка</span></button>
@@ -98,7 +118,7 @@ const ROOM = '__ROOM__';
 const LANG = ['ru', 'kk', 'be', 'uk'].includes((navigator.language || '').slice(0, 2)) ? 'ru' : 'en';
 const L = (ru, en) => LANG === 'en' ? en : ru;
 document.documentElement.lang = LANG;
-if (LANG === 'en') { document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; }); document.querySelectorAll('[data-en-title]').forEach(el => { el.title = el.dataset.enTitle; }); }
+if (LANG === 'en') { document.querySelectorAll('[data-en-ph]').forEach(el => { el.placeholder = el.dataset.enPh; }); document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; }); document.querySelectorAll('[data-en-title]').forEach(el => { el.title = el.dataset.enTitle; }); }
 document.title = L('Просмотр цветокоррекции', 'Color grading preview');
 const LAN = __LAN__;   // открыто по ссылке внутри сети: видео приходит по WebRTC напрямую по Wi-Fi
 const $ = id => document.getElementById(id);
@@ -308,7 +328,7 @@ function showBitmap(item) {
   ctx.drawImage(item.bmp, 0, 0, PW, PH);
   shownTs = item.ts; item.bmp.close(); frames++; Scopes.dirty = true;
   if (window.__avProbe) window.__avProbe('v', item.ts, performance.now());
-  if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
+  if (!gotFrame) { gotFrame = true; status(''); }
 }
 (function tick() {
   requestAnimationFrame(tick);
@@ -339,7 +359,7 @@ function resetDecoder() {
       f.close();
       frames++; Scopes.dirty = true;
       if (window.__avProbe) window.__avProbe('v', shownTs, performance.now());
-      if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
+      if (!gotFrame) { gotFrame = true; status(''); }
     },
     error: e => { console.warn(e); setTimeout(() => { if (cfg) { resetDecoder(); askKey(); } }, 100); },
   });
@@ -496,12 +516,23 @@ function onTap(e) {
   const x = (e.clientX - ox) / dw, y = (e.clientY - oy) / dh;
   if (x < 0 || x > 1 || y < 0 || y > 1) return;
   const p = document.createElement('div');
-  p.className = 'ping'; p.style.left = e.clientX + 'px'; p.style.top = e.clientY + 'px';
-  document.body.appendChild(p); setTimeout(() => p.remove(), 1600);
-  const text = prompt(L('Комментарий к точке (можно оставить пустым):', 'Comment for this point (optional):'));
-  if (text !== null) { send(LAN ? { t: 'mark', x, y, text, lag: lagMs } : { t: 'mark', x, y, text, ts: shownTs }); note(L('Метка отправлена', 'Marker sent')); }
+  p.className = 'ping hold'; p.style.left = e.clientX + 'px'; p.style.top = e.clientY + 'px';
+  document.body.appendChild(p);
+  // момент кадра запоминаем сразу, при касании, — пока клиент печатает, видео идёт дальше
+  pendingMark = { msg: LAN ? { t: 'mark', x, y, lag: lagMs } : { t: 'mark', x, y, ts: shownTs }, ping: p };
   markMode = false; $('btnMark').classList.remove('on'); $('hint').style.display = 'none';
+  $('ctext').value = ''; $('cbox').classList.add('show'); $('ctext').focus();
 }
+let pendingMark = null;
+function closeComment(sendIt) {
+  if (!pendingMark) return;
+  if (sendIt) { send(Object.assign(pendingMark.msg, { text: $('ctext').value })); note(L('Метка отправлена', 'Marker sent')); }
+  const p = pendingMark.ping; p.classList.remove('hold'); setTimeout(() => p.remove(), 1600);
+  pendingMark = null; $('cbox').classList.remove('show'); $('ctext').blur();
+}
+$('cbox').addEventListener('submit', e => { e.preventDefault(); closeComment(true); });
+$('cbox').addEventListener('click', e => e.stopPropagation());
+$('ccancel').onclick = () => closeComment(false);
 canvas.addEventListener('click', onTap);
 lv.addEventListener('click', onTap);
 
@@ -518,8 +549,8 @@ const Scopes = (() => {
   const KR = 0.2126, KG = 0.7152, KB = 0.0722;            // Rec.709
   const ORDER = ['wave', 'parade', 'vector'];
   const ASPECT = { wave: 2, parade: 2, vector: 1 };
-  let st = { on: { wave: true, parade: false, vector: true }, open: false, big: false, color: true };
-  try { const o = JSON.parse(localStorage.getItem('gs.view.scopes') || '{}'); if (o.on) for (const k of ORDER) if (k in o.on) st.on[k] = !!o.on[k]; st.open = !!o.open; st.big = !!o.big; st.color = o.color !== false; } catch {}
+  let st = { on: { wave: true, parade: false, vector: true }, open: false, big: false, cmode: 'Colorize' };
+  try { const o = JSON.parse(localStorage.getItem('gs.view.scopes') || '{}'); if (o.on) for (const k of ORDER) if (k in o.on) st.on[k] = !!o.on[k]; st.open = !!o.open; st.big = !!o.big; st.cmode = o.cmode === 'Mono' || o.color === false ? 'Mono' : 'Colorize'; } catch {}
   const save = () => { try { localStorage.setItem('gs.view.scopes', JSON.stringify(st)); } catch {} };
   let allowed = false, lastT = 0, lastLvTime = -1, dirty = true, cost = 20;
   const views = {};
@@ -555,7 +586,7 @@ const Scopes = (() => {
     for (const b of panel.querySelectorAll('[data-sc]')) b.classList.toggle('on', !!st.on[b.dataset.sc]);
     $('scBig').title = st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes');
     $('scBig').classList.toggle('on', st.big);
-    $('scColor').classList.toggle('on', st.color);
+    $('scColor').textContent = st.cmode;
     const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 6;
     const bottom = bar.classList.contains('hidden') ? 6 : bar.getBoundingClientRect().height + 14;
     const H = window.innerHeight - top - bottom, land = W > H * 1.15, m = 6, gap = 3;
@@ -639,12 +670,14 @@ const Scopes = (() => {
   }
   // Яркость следа — логарифм плотности, как у Resolve: видны и редкие пиксели, плотные области не сливаются в заливку
   const glow = (d, ref) => d > 0 ? Math.min(255, 255 * Math.log1p(d) / Math.log1p(ref)) : 0;
-  // Waveform и парад. Цвет: waveform окрашен средним цветом пикселей в точке (как Colorize в Resolve), парад — R/G/B.
-  // Ч/б: весь след белый.
+  // Waveform и парад, два режима:
+  //   Colorize — waveform по яркости, след окрашен в цвет пикселей (как Colorize в Resolve); парад — красный/зелёный/синий;
+  //   Mono     — всё белое, waveform по яркости (Y).
   function waveform(px, v, parade) {
-    const { w, h, img } = v, d = img.data, n = w * h, color = st.color;
-    const cnt = [new Float32Array(n), parade ? new Float32Array(n) : null, parade ? new Float32Array(n) : null];
-    const sum = !parade && color ? [new Float32Array(n), new Float32Array(n), new Float32Array(n)] : null;
+    const { w, h, img } = v, d = img.data, n = w * h, color = st.cmode !== 'Mono';
+    const rgb = parade, clz = !parade && st.cmode === 'Colorize';
+    const cnt = [new Float32Array(n), rgb ? new Float32Array(n) : null, rgb ? new Float32Array(n) : null];
+    const sum = clz ? [new Float32Array(n), new Float32Array(n), new Float32Array(n)] : null;
     const gap = parade ? Math.max(3, Math.round(w / 90)) : 0, pw = parade ? Math.floor((w - 2 * gap) / 3) : w;
     const colOf = new Int32Array(SW), colW = new Float32Array(pw);
     for (let x = 0; x < SW; x++) { colOf[x] = Math.floor(x * pw / SW); colW[colOf[x]]++; }
@@ -655,19 +688,20 @@ const Scopes = (() => {
     for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
       const i = (y * SW + x) * 4, R = px[i], G = px[i + 1], B = px[i + 2], c = colOf[x], wt = colW[c];
       if (parade) { let q = at(R, c, 0); if (q >= 0) cnt[0][q] += wt; q = at(G, c, o2); if (q >= 0) cnt[1][q] += wt; q = at(B, c, o3); if (q >= 0) cnt[2][q] += wt; }
+      else if (rgb) { let q = at(R, c, 0); if (q >= 0) cnt[0][q] += wt; q = at(G, c, 0); if (q >= 0) cnt[1][q] += wt; q = at(B, c, 0); if (q >= 0) cnt[2][q] += wt; }
       else { const q = at(KR * R + KG * G + KB * B, c, 0); if (q >= 0) { cnt[0][q] += wt; if (sum) { sum[0][q] += R * wt; sum[1][q] += G * wt; sum[2][q] += B * wt; } } }
     }
     v.pw = pw; v.gap = gap;
     const ref = SH * 0.3 / Math.max(1, h / 256);           // плоская область на одном уровне ≈ полная яркость
     for (let i = 0, j = 0; i < n; i++, j += 4) {
       let R = 0, G = 0, B = 0;
-      if (!parade) {
+      if (clz) {                                             // цвет пикселей, приведённый к полной яркости следа
         const a = glow(cnt[0][i], ref);
-        if (a && sum) {                                     // средний цвет пикселей, приведённый к полной яркости
-          const r = sum[0][i], g = sum[1][i], b = sum[2][i], mx = Math.max(r, g, b) || 1;
-          R = a * (0.25 + 0.75 * r / mx); G = a * (0.25 + 0.75 * g / mx); B = a * (0.25 + 0.75 * b / mx);
-        } else { R = a * 0.93; G = a * 0.96; B = a; }
-      } else if (color) { R = glow(cnt[0][i], ref); G = glow(cnt[1][i], ref) * 0.9; B = glow(cnt[2][i], ref); }
+        if (a) { const r = sum[0][i], g = sum[1][i], b = sum[2][i], mx = Math.max(r, g, b) || 1; R = a * (0.12 + 0.88 * r / mx); G = a * (0.12 + 0.88 * g / mx); B = a * (0.12 + 0.88 * b / mx); }
+      }
+      else if (!parade && !rgb) { const a = glow(cnt[0][i], ref); R = a * 0.93; G = a * 0.96; B = a; }
+      else if (!parade) { R = glow(cnt[0][i], ref); G = glow(cnt[1][i], ref) * 0.92; B = glow(cnt[2][i], ref); }   // сложение R+G+B = белый
+      else if (color) { R = glow(cnt[0][i], ref); G = glow(cnt[1][i], ref) * 0.9; B = glow(cnt[2][i], ref); }
       else { const a = glow(cnt[0][i] + cnt[1][i] + cnt[2][i], ref); R = a * 0.93; G = a * 0.96; B = a; }
       d[j] = R; d[j + 1] = G; d[j + 2] = B; d[j + 3] = 255;
     }
@@ -680,7 +714,7 @@ const Scopes = (() => {
   // Цветоразностные Cb/Cr по Rec.709, в долях от полного размаха (±0,5)
   const cbcr = (R, G, B) => { const Y = KR * R + KG * G + KB * B; return [(B - Y) / 1.8556 / 255, (R - Y) / 1.5748 / 255]; };
   function vectorscope(px, v) {
-    const { img, w } = v, d = img.data, N = w * w, n = new Float32Array(N), color = st.color;
+    const { img, w } = v, d = img.data, N = w * w, n = new Float32Array(N), color = st.cmode !== 'Mono';
     const sr = color ? new Float32Array(N) : null, sg = color ? new Float32Array(N) : null, sb = color ? new Float32Array(N) : null;
     const c0 = w / 2, k = 2 * (118 / 256 * w);              // радиус круга = Cb/Cr 0,5
     let jx = 0;
@@ -822,7 +856,8 @@ const Scopes = (() => {
     save(); layout();
   };
   $('scBig').onclick = () => { st.big = !st.big; save(); layout(); };
-  $('scColor').onclick = () => { st.color = !st.color; save(); layout(); };
+  // Colorize ⇄ Mono
+  $('scColor').onclick = () => { st.cmode = st.cmode === 'Mono' ? 'Colorize' : 'Mono'; save(); layout(); };
   $('scClose').onclick = () => show(false);
   window.addEventListener('resize', () => { if (st.open) layout(); });
   $('btnScopes').onclick = e => { e.stopPropagation(); show(!st.open); };
@@ -845,21 +880,18 @@ for (const b of document.querySelectorAll('.tile')) { const t = b.querySelector(
 $('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons')); };
 $('btnInfo').onclick = e => { e.stopPropagation(); const i = $('info'); i.style.display = i.style.display === 'block' ? 'none' : 'block'; };
 // ---------- Во весь экран ----------
-// Android, iPad, компьютер — полноэкранный режим страницы (метки остаются доступны).
-// iPhone не разрешает развернуть страницу, поэтому картинка дублируется в видеоэлемент
-// и открывается в системном полноэкранном плеере iOS (для метки — выйти из него).
+// Android, iPad, компьютер — полноэкранный режим страницы (системный).
+// iPhone не разрешает сайтам разворачивать страницу (только видео в системном плеере, поверх которого
+// ничего нельзя показать). Поэтому на iPhone — полный экран внутри страницы: кнопки спрятаны и всплывают
+// по касанию (метки, скопы, звук — всё доступно), а свайп вверх сворачивает панели Safari.
 const fsEl = document.documentElement;
 const pageFS = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
-let fsVideo = null;
-function ensureFsVideo() {
-  if (pageFS || fsVideo || !canvas.captureStream) return;
-  fsVideo = document.createElement('video');
-  fsVideo.muted = true; fsVideo.autoplay = true; fsVideo.playsInline = true;
-  fsVideo.setAttribute('playsinline', ''); fsVideo.setAttribute('muted', '');
-  fsVideo.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none';
-  fsVideo.srcObject = canvas.captureStream(30);
-  document.body.appendChild(fsVideo);
-  fsVideo.play().catch(() => {});
+const fullLabel = on => $('btnFull').querySelector('.t').textContent = on ? L('Свернуть', 'Exit') : L('Экран', 'Full');
+function setImmersive(on) {
+  fsEl.classList.toggle('immersive', on);
+  $('btnFull').classList.toggle('on', on); fullLabel(on);
+  if (on) { $('bar').classList.add('hidden'); note(L('Коснитесь экрана — появятся кнопки. Проведите вверх, чтобы Safari спрятал свою панель', 'Tap the screen for the buttons. Swipe up to hide Safari’s bar')); }
+  else window.scrollTo(0, 0);
 }
 $('btnFull').style.display = '';
 $('btnFull').onclick = e => {
@@ -872,14 +904,9 @@ $('btnFull').onclick = e => {
     note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons'));
     return;
   }
-  if (!LAN) ensureFsVideo();
-  const fv = LAN ? lv : fsVideo;
-  if (fv && fv.webkitEnterFullscreen) {
-    fv.play().catch(() => {});
-    try { fv.webkitEnterFullscreen(); } catch { note(L('Поверните телефон горизонтально', 'Turn the phone sideways')); }
-  } else note(L('Поверните телефон горизонтально — картинка займёт весь экран', 'Turn the phone sideways — the picture will fill the screen'));
+  setImmersive(!fsEl.classList.contains('immersive'));
 };
-document.addEventListener('fullscreenchange', () => { $('btnFull').querySelector('.t').textContent = document.fullscreenElement ? L('Свернуть', 'Exit') : L('Экран', 'Full'); });
+document.addEventListener('fullscreenchange', () => { fullLabel(!!document.fullscreenElement); $('btnFull').classList.toggle('on', !!document.fullscreenElement); });
 
 setInterval(() => {
   $('info').textContent = LAN

@@ -165,9 +165,9 @@ The client gets one row of small tiles; a tile that is on turns orange. Tap the 
 | Tile | What it does |
 |---|---|
 | **Speaker** | sound on / off (shown only when you stream audio) |
-| **Pin** | marker mode: tap the frame and type a comment — it reaches you instantly |
+| **Pin** | marker mode: tap the frame, type a comment in the line that appears above the tiles, **Send** — it reaches you instantly. The moment of the frame is taken when the client taps, not when they finish typing. |
 | **Scope** | Waveform, Parade, Vectorscope — [see below](#8-scopes-for-the-client) (shown when you allow it) |
-| **Frame corners** | full-screen picture; on iPhone it uses the system video player |
+| **Frame corners** | full screen. On Android, iPad and computers the page goes full screen; on iPhone (Safari doesn't let a page go full screen) the picture fills the page and a swipe up hides Safari's bars. In both, a tap on the picture brings the tiles back — markers, scopes and sound work in full screen; the tile turns orange while full screen is on, tap it again to leave. |
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
 | **Arrow down** | hides the tiles |
 
@@ -186,7 +186,7 @@ Scopes never cover the picture. When they open, the picture moves aside and the 
 - **Big picture** — the picture keeps about two thirds of the screen, the scopes sit next to it (below it when the phone is upright).
 - **Big scopes** — the scopes take the screen and the picture becomes one smaller tile (a strip on top when upright). Markers can still be placed on it.
 - Tabs at the top switch each scope on and off; the remaining scopes grow to fill the freed space. The last scope can't be switched off — close the scopes with the cross instead.
-- **Color / mono** (half-circle icon) for all scopes at once. Color: the waveform takes the color of the pixels (like Resolve's Colorize), parade in R/G/B, vectorscope in the hues of the picture. Mono: white trace on black.
+- **Colorize / Mono** — the button with the mode name at the top right switches all scopes at once. Colorize (default): the waveform takes the color of the pixels, like Colorize in Resolve; parade in R/G/B; vectorscope in the hues of the picture. Mono: white trace on black.
 - The look follows Resolve: black scope area, white 0–1023 scale every 128, thin graticule over the trace; the vectorscope has 75% color-bar targets, 100% dots and the skin-tone line.
 
 <p align="center"><img src="docs/img/scopes-big-portrait.png" width="260" alt="Big scopes with the phone upright: picture strip on top, scopes below"></p>

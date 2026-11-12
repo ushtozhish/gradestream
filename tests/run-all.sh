@@ -28,12 +28,14 @@ start() { # $1 = simulated network jitter, ms
   start 0; GS_LOG=gs.log node scopetest.js 2>&1
   echo '```'
   echo
-  echo "## Client layout, scope switching, portrait screens, out-of-range alarm"
+  echo "## Client layout, scope switching, portrait screens, out-of-range alarm, full screen"
   echo '```'
   start 0; GS_LOG=gs.log SRC=land node layouttest.js 2>&1
   start 0; GS_LOG=gs.log SRC=port node layouttest.js 2>&1
   start 0; GS_LOG=gs.log CASE=bad node alarmtest.js 2>&1
   start 0; GS_LOG=gs.log CASE=good node alarmtest.js 2>&1
+  start 0; GS_LOG=gs.log IPHONE=1 node fullscreentest.js 2>&1
+  start 0; GS_LOG=gs.log IPHONE=0 node fullscreentest.js 2>&1
   echo '```'
   echo
   echo "## Audio/video sync and frame pacing"

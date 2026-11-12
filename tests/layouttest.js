@@ -62,9 +62,9 @@ const SRC = process.env.SRC || 'land', [SW, SH] = SRC === 'port' ? [1080, 1920] 
     if (!await v.evaluate(() => document.querySelectorAll('#scBody canvas').length === 1)) fail(`${orient}: the last scope could be switched off`);
     // marker in the middle of the picture → the host gets the centre of the frame
     await v.tap('#btnMark'); await sleep(200);
-    v.once('dialog', d => d.accept(SRC + ' ' + orient));
     const c = await v.evaluate(() => { const b = document.getElementById('c').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
-    await v.mouse.click(c[0], c[1]); await sleep(800);
+    await v.mouse.click(c[0], c[1]); await sleep(300);
+    await v.fill('#ctext', SRC + ' ' + orient); await v.press('#ctext', 'Enter'); await sleep(800);
     const txt = await host.evaluate(() => document.getElementById('marks').innerText);
     const m = txt.match(/(\d+), (\d+) — [^\n]*$/m) || txt.match(/(\d+), (\d+)/);
     if (!m || Math.abs(+m[1] - SW / 2) > 6 || Math.abs(+m[2] - SH / 2) > 6) fail(`${orient}: marker in the picture centre arrived as ${m ? m[1] + ', ' + m[2] : 'nothing'}, expected ${SW / 2}, ${SH / 2}`);
