@@ -154,6 +154,11 @@
           <option value="sync" data-en="Smooth &amp; in sync — editing review">Плавно и синхронно — монтаж</option>
         </select></div>
       <div class="muted" id="playoutInfo" data-en="«Smooth &amp; in sync» adds a 0.12–0.7 s buffer on viewers (it adapts to the network) so frames come evenly and sound matches the picture. Sound is always synced when a viewer turns it on.">«Плавно и синхронно» — у зрителей буфер 0,12–0,7 с (подстраивается под сеть): кадры идут ровно, звук совпадает с картинкой. Если зритель включил звук, синхронизация включается всегда.</div>
+      <div class="row"><label class="l" data-en="Client scopes">Скопы у клиента</label>
+        <select id="scopesAllow" style="flex:1;min-width:0">
+          <option value="on" data-en="Allowed — waveform, parade, vectorscope, histogram">Разрешены — waveform, парад, вектороскоп, гистограмма</option>
+          <option value="off" data-en="Off — clients see only the picture">Выключены — клиент видит только картинку</option>
+        </select></div>
       <div class="muted" id="encInfo"></div>
     </div>
 
@@ -306,7 +311,7 @@ setInterval(syncClock, 5000);
 
 // Режим подачи у зрителей: live — минимальная задержка (цветокоррекция),
 // sync — ровная подача и синхронный звук (монтаж, режиссёр)
-function sendPlayout() { sendJSON({ t: 'playout', mode: $('playout').value }); }
+function sendPlayout() { sendJSON({ t: 'playout', mode: $('playout').value }); sendJSON({ t: 'scopes', on: $('scopesAllow').value === 'on' }); }
 
 function sendLive() { sendPlayout(); sendJSON({ t: 'live', on: running }); if (running) sendJSON({ t: 'pause', on: paused }); if (lastConfigMsg) sendJSON(lastConfigMsg); }
 
@@ -1074,6 +1079,8 @@ document.addEventListener('fullscreenchange', () => { $('btnFS').textContent = d
 
 $('btnFolder').onclick = () => openFolder();
 try { const pv = localStorage.getItem('gs.playout'); if (pv === 'live' || pv === 'sync') $('playout').value = pv; } catch {}
+try { const sv = localStorage.getItem('gs.scopes'); if (sv === 'on' || sv === 'off') $('scopesAllow').value = sv; } catch {}
+$('scopesAllow').onchange = () => { try { localStorage.setItem('gs.scopes', $('scopesAllow').value); } catch {} sendPlayout(); };
 $('playout').onchange = () => { try { localStorage.setItem('gs.playout', $('playout').value); } catch {} sendPlayout(); };
 
 // ---------- Папка для скриншотов ----------

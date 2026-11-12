@@ -23,6 +23,11 @@ start() { # $1 = simulated network jitter, ms
   start 0; GS_LOG=gs.log BR=8000000 node colortest.js 2>&1
   echo '```'
   echo
+  echo "## Client scopes (75% bars + gray ramp through both paths)"
+  echo '```'
+  start 0; GS_LOG=gs.log node scopetest.js 2>&1
+  echo '```'
+  echo
   echo "## Audio/video sync and frame pacing"
   echo
   echo "Sign: negative = sound ahead of the picture. Pacing at 25 fps: deviation of display intervals from 40 ms."

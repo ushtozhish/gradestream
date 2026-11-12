@@ -14,6 +14,7 @@
   #status { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:28px; color:#999; pointer-events:none; }
   #bar { position:fixed; left:0; right:0; bottom:0; padding:10px 12px calc(12px + env(safe-area-inset-bottom));
          display:flex; gap:8px; justify-content:center; flex-wrap:wrap; background:linear-gradient(transparent, rgba(0,0,0,.75)); transition:opacity .3s; }
+  #bar, #note, #hint { z-index:7; }
   #bar.hidden { opacity:0; pointer-events:none; }
   button { background:rgba(40,40,40,.88); color:#eee; border:1px solid #555; border-radius:20px; padding:9px 16px; font:inherit; }
   button.on { background:#e0a040; color:#111; border-color:#e0a040; }
@@ -24,6 +25,26 @@
   @keyframes fade { from { transform:scale(.5); opacity:1 } to { transform:scale(1.6); opacity:0 } }
   #note { position:fixed; left:50%; bottom:calc(70px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:rgba(0,0,0,.75); color:#ccc;
           padding:6px 12px; border-radius:12px; font-size:13px; display:none; }
+
+  /* ---------- Скопы ---------- */
+  #scopes { position:fixed; right:10px; top:calc(10px + env(safe-area-inset-top)); z-index:5; display:none; max-width:calc(100vw - 20px);
+            max-height:calc(100vh - 90px); overflow:auto; background:rgba(8,8,8,var(--scA,.82)); border:1px solid #444; border-radius:10px;
+            font-size:12px; touch-action:none; }
+  #scopes.show { display:block; }
+  #scHead { display:flex; flex-wrap:wrap; gap:4px; padding:6px; cursor:move; border-bottom:1px solid #333; }
+  #scHead button { padding:4px 9px; border-radius:12px; font-size:12px; }
+  #scHead .sp { flex:1; min-width:6px; }
+  #scBody { display:flex; flex-wrap:wrap; gap:6px; padding:6px; }
+  #scBody canvas { position:static; display:block; width:var(--scW,260px); height:auto; background:#050505; border-radius:4px; }
+  #scBody canvas.sq { width:calc(var(--scW,260px) * .62); }
+  /* режим «Скопы крупно»: скопы на весь экран, картинка — маленькое окно */
+  #scopes.big { inset:0; left:0 !important; top:0 !important; right:0 !important; max-width:none; max-height:none; border:none; border-radius:0;
+                background:#000; padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); box-sizing:border-box; overflow:hidden; }
+  #scopes.big #scHead { cursor:default; }
+  #scopes.big #scBody { padding:6px 10px; gap:10px; align-content:center; justify-content:center; box-sizing:border-box; }
+  body.scbig #c, body.scbig #lv { inset:auto; z-index:6; width:var(--pipW); height:calc(var(--pipW) * 9 / 16); left:var(--pipL); top:var(--pipT);
+                                  border:1px solid #555; border-radius:6px; box-sizing:border-box; }
+  #scNote { padding:0 8px 7px; color:#888; font-size:11px; max-width:520px; display:none; }
 </style>
 </head>
 <body>
@@ -34,10 +55,29 @@
 <div id="pause" data-en="Paused">Пауза</div>
 <div id="info"></div>
 <div id="note"></div>
+<div id="scopes">
+  <div id="scHead">
+    <button data-sc="wave" data-en="Waveform">Waveform</button>
+    <button data-sc="parade" data-en="Parade">Парад</button>
+    <button data-sc="vector" data-en="Vector">Вектор</button>
+    <button data-sc="hist" data-en="Histogram">Гистограмма</button>
+    <span class="sp"></span>
+    <button id="scBig"></button>
+    <button id="scMode" title="Waveform: яркость (Y) или каналы RGB" data-en-title="Waveform: luma (Y) or RGB channels">Y</button>
+    <button id="scZoom" title="Увеличение вектороскопа" data-en-title="Vectorscope zoom">1×</button>
+    <button id="scGain" title="Яркость следа" data-en-title="Trace brightness">☀</button>
+    <button id="scSize" title="Размер" data-en-title="Size">M</button>
+    <button id="scHelp">?</button>
+    <button id="scClose">✕</button>
+  </div>
+  <div id="scBody"></div>
+  <div id="scNote"></div>
+</div>
 <div id="bar">
   <button id="btnSound" style="display:none" data-en="Turn sound on">Включить звук</button>
   <button id="btnMark" data-en="Mark a point">Отметить точку</button>
   <button id="btnFull" style="display:none" data-en="Fullscreen">На весь экран</button>
+  <button id="btnScopes" style="display:none" data-en="Scopes">Скопы</button>
   <button id="btnInfo">i</button>
   <button id="btnHide" data-en="Hide">Скрыть</button>
 </div>
@@ -48,7 +88,7 @@ const ROOM = '__ROOM__';
 const LANG = ['ru', 'kk', 'be', 'uk'].includes((navigator.language || '').slice(0, 2)) ? 'ru' : 'en';
 const L = (ru, en) => LANG === 'en' ? en : ru;
 document.documentElement.lang = LANG;
-if (LANG === 'en') document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; });
+if (LANG === 'en') { document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; }); document.querySelectorAll('[data-en-title]').forEach(el => { el.title = el.dataset.enTitle; }); }
 document.title = L('Просмотр цветокоррекции', 'Color grading preview');
 const LAN = __LAN__;   // открыто по ссылке внутри сети: видео приходит по WebRTC напрямую по Wi-Fi
 const $ = id => document.getElementById(id);
@@ -103,6 +143,7 @@ function onText(m) {
   else if (m.t === 'rtc-offer') onRtcOffer(m);
   else if (m.t === 'rtc-ice') { if (pc && m.c) pc.addIceCandidate(m.c).catch(() => {}); }
   else if (m.t === 'rtc-error') status(L('Не удалось начать показ: ', 'Could not start playback: ') + m.error);
+  else if (m.t === 'scopes') Scopes.allow(!!m.on);
   else if (m.t === 'playout') { playMode = m.mode === 'sync' ? 'sync' : 'live'; applyReceiverMode(); }
   else if (m.t === 'audio') { if (LAN) $('btnSound').style.display = m.on ? '' : 'none'; else onAudioConfig(m); }
   else if (m.t === 'config') { if (!LAN) setupDecoder(m); }
@@ -245,7 +286,7 @@ function queueFrame(f) {
 }
 function showBitmap(item) {
   ctx.drawImage(item.bmp, 0, 0, 1920, 1080);
-  shownTs = item.ts; item.bmp.close(); frames++;
+  shownTs = item.ts; item.bmp.close(); frames++; Scopes.dirty = true;
   if (window.__avProbe) window.__avProbe('v', item.ts, performance.now());
   if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
 }
@@ -443,6 +484,290 @@ function onTap(e) {
 }
 canvas.addEventListener('click', onTap);
 lv.addEventListener('click', onTap);
+
+
+// ---------- Скопы: waveform, RGB-парад, вектороскоп, гистограмма ----------
+// Считаются на телефоне по той картинке, которую клиент сейчас видит (уже после передачи),
+// до 10 раз в секунду (реже на слабом телефоне), по уменьшенной до 512×576 копии кадра. Шкала — как в Resolve: 0–1023.
+const Scopes = (() => {
+  const SW = 512, SH = 576;                                // размер выборки: по высоте — половина строк кадра, иначе градиенты дают полосы
+  const src = document.createElement('canvas'); src.width = SW; src.height = SH;
+  const sctx = src.getContext('2d', { willReadFrequently: true, alpha: false });
+  const panel = $('scopes'), body = $('scBody');
+  const KR = 0.2126, KG = 0.7152, KB = 0.0722;            // Rec.709
+  const SIZES = { S: 190, M: 270, L: 380, XL: 520 }, SIZE_ORDER = ['S', 'M', 'L', 'XL'];
+  const GAINS = [0.6, 1, 1.7];
+  let st = { on: { wave: true, parade: false, vector: true, hist: false }, mode: 'Y', zoom: 1, gain: 1, size: 'M', x: null, y: null, open: false, big: false };
+  try { Object.assign(st, JSON.parse(localStorage.getItem('gs.view.scopes') || '{}')); } catch {}
+  const save = () => { try { localStorage.setItem('gs.view.scopes', JSON.stringify(st)); } catch {} };
+  let allowed = false, lastT = 0, lastLvTime = -1;
+  const views = {};                                        // вид → { cv, data(off-screen), w, h }
+  window.__scopeViews = views;                             // для автоматических тестов
+
+  const NAT = { wave: [SW, 256], parade: [SW, 256], vector: [256, 256], hist: [256, 128] };   // наибольший полезный размер
+  function mk(kind) {
+    const cv = document.createElement('canvas'); if (kind === 'vector') cv.className = 'sq';
+    const data = document.createElement('canvas'), dctx = data.getContext('2d');
+    views[kind] = { kind, cv, data, dctx, img: null, w: 0, h: 0 };
+    return cv;
+  }
+  // След считается сразу в размере окошка на экране (но не крупнее естественного) — тонкие линии не размываются
+  function fit(v) {
+    const dpr = Math.min(2, window.devicePixelRatio || 1), [nw, nh] = NAT[v.kind];
+    const cw = Math.max(32, Math.round(v.cv.clientWidth * dpr));
+    const w = Math.min(nw, cw), h = Math.min(nh, Math.round(cw * nh / nw));
+    if (w !== v.w || h !== v.h) { v.w = v.data.width = w; v.h = v.data.height = h; v.img = v.dctx.createImageData(w, h); }
+    return v;
+  }
+  function layout() {
+    body.innerHTML = '';
+    for (const k of ['wave', 'parade', 'vector', 'hist']) {
+      if (!st.on[k]) continue;
+      if (!views[k]) mk(k);
+      body.appendChild(views[k].cv);
+    }
+    panel.style.setProperty('--scW', Math.min(SIZES[st.size], window.innerWidth - 40) + 'px');
+    const big = st.big && st.open;
+    panel.classList.toggle('big', big); document.body.classList.toggle('scbig', big);
+    $('scBig').textContent = st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes');
+    $('scSize').style.display = st.big ? 'none' : '';
+    for (const k in views) views[k].cv.style.width = '';
+    body.style.width = body.style.marginTop = body.style.height = '';
+    for (const b of panel.querySelectorAll('[data-sc]')) b.classList.toggle('on', !!st.on[b.dataset.sc]);
+    $('scMode').textContent = st.mode === 'Y' ? 'Y' : 'RGB';
+    $('scMode').style.display = st.on.wave ? '' : 'none';
+    $('scZoom').textContent = st.zoom + '×';
+    $('scZoom').style.display = st.on.vector ? '' : 'none';
+    $('scSize').textContent = st.size;
+    if (big) requestAnimationFrame(layoutBig); else place();
+    dirty = true;
+  }
+  new MutationObserver(() => layoutBig()).observe($('bar'), { attributes: true, attributeFilter: ['class'] });
+  // «Скопы крупно»: картинка — окно справа (горизонтально) или сверху (вертикально), скопы делят остальное место
+  function layoutBig() {
+    if (!(st.big && st.open)) return;
+    const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 8;
+    const bottom = bar.classList.contains('hidden') ? 8 : bar.getBoundingClientRect().height;
+    const H = window.innerHeight - top - bottom, land = W > H * 1.15;
+    let pipW, pipL, areaW, areaH, areaTop = 0;
+    if (land) { pipW = Math.min(W * 0.3, H * 16 / 9); pipL = W - pipW - 10; areaW = W - pipW - 30; areaH = H; }
+    else { pipW = Math.min(W - 20, W * 0.7); pipL = (W - pipW) / 2; areaW = W - 20; areaTop = pipW * 9 / 16 + 10; areaH = H - areaTop; }
+    document.body.style.setProperty('--pipW', pipW + 'px');
+    document.body.style.setProperty('--pipL', pipL + 'px');
+    document.body.style.setProperty('--pipT', top + 'px');
+    body.style.width = areaW + 'px'; body.style.marginTop = areaTop + 'px'; body.style.height = areaH + 'px';
+    // сетка: перебираем число столбцов и берём ту, где скопы крупнее всего
+    const list = Object.keys(views).filter(k => st.on[k]), asp = k => k === 'vector' ? 1 : 2;
+    let bestCols = 1, bestArea = 0;
+    for (let cols = 1; cols <= list.length; cols++) {
+      const rows = Math.ceil(list.length / cols), cw = (areaW - 20) / cols - 10, ch = (areaH - 12) / rows - 10;
+      const area = list.reduce((a, k) => { const w = Math.min(cw, ch * asp(k)); return a + w * w / asp(k); }, 0);
+      if (area > bestArea) { bestArea = area; bestCols = cols; }
+    }
+    const rows = Math.ceil(list.length / bestCols), cw = (areaW - 20) / bestCols - 10, ch = (areaH - 12) / rows - 10;
+    for (const k of list) views[k].cv.style.width = Math.max(60, Math.floor(Math.min(cw, ch * asp(k)))) + 'px';
+    dirty = true;
+  }
+  function place() {
+    if (st.x === null) { panel.style.left = ''; panel.style.top = ''; panel.style.right = '10px'; return; }
+    const r = panel.getBoundingClientRect();
+    const x = Math.max(0, Math.min(window.innerWidth - Math.min(r.width, window.innerWidth), st.x));
+    const y = Math.max(0, Math.min(window.innerHeight - 60, st.y));
+    panel.style.right = 'auto'; panel.style.left = x + 'px'; panel.style.top = y + 'px';
+  }
+  function show(open) {
+    st.open = open && allowed; save();
+    panel.classList.toggle('show', st.open);
+    $('btnScopes').classList.toggle('on', st.open);
+    if (st.open) layout(); else { panel.classList.remove('big'); document.body.classList.remove('scbig'); }
+  }
+
+  // ---- расчёт ----
+  let dirty = true;
+  function grab() {
+    const el = LAN ? lv : canvas;
+    if (LAN) { if (!lv.videoWidth || lv.readyState < 2) return null; if (lv.currentTime === lastLvTime && !dirty) return null; lastLvTime = lv.currentTime; }
+    else if (!dirty) return null;
+    dirty = false;
+    sctx.drawImage(el, 0, 0, SW, SH);
+    return sctx.getImageData(0, 0, SW, SH).data;
+  }
+  // Яркость следа — логарифм плотности (как у аппаратных скопов): видны и одиночные пиксели, и плотные области не сливаются в заливку
+  const glow = (d, ref) => d > 0 ? Math.min(255, 255 * GAINS[st.gain] * Math.log1p(d) / Math.log1p(ref)) : 0;
+  function waveform(px, v, parade) {
+    const { w, h, img } = v, d = img.data, n = w * h;
+    const r = new Uint16Array(n), g = new Uint16Array(n), b = new Uint16Array(n);
+    const row = new Int32Array(256); for (let q = 0; q < 256; q++) row[q] = Math.round((255 - q) / 255 * (h - 1)) * w;
+    const gap = parade ? Math.max(2, Math.round(w / 128)) : 0, pw = parade ? Math.floor((w - 2 * gap) / 3) : w;
+    const colOf = new Int32Array(SW), colN = new Float32Array(pw), rowN = new Float32Array(h);
+    for (let x = 0; x < SW; x++) { colOf[x] = Math.floor(x * pw / SW); colN[colOf[x]]++; }
+    for (let q = 0; q < 256; q++) rowN[row[q] / w]++;
+    // нормировка: сколько столбцов выборки и сколько уровней попало в каждую клетку — иначе при любом размере появляются полосы
+    for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
+      const i = (y * SW + x) * 4, R = px[i], G = px[i + 1], B = px[i + 2], c = colOf[x];
+      if (parade) { r[row[R] + c]++; g[row[G] + c + pw + gap]++; b[row[B] + c + 2 * (pw + gap)]++; }
+      else if (st.mode === 'Y') r[row[Math.round(KR * R + KG * G + KB * B)] + c]++;
+      else { r[row[R] + c]++; g[row[G] + c]++; b[row[B] + c]++; }
+    }
+    v.pw = pw; v.gap = gap;
+    const lum = !parade && st.mode === 'Y', ref = SH * 0.35;   // треть столбца на одном уровне = полная яркость
+    // плотность → лёгкое вертикальное сглаживание 1-2-1 (как свечение люминофора): убирает полосы 8-битной выборки, не сдвигая след
+    const dens = [r, g, b].map(cnt => { const o = new Float32Array(n);
+      for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i++) { const xm = parade ? x % (pw + gap) : x; if (xm < pw && cnt[i]) o[i] = cnt[i] / (colN[xm] * rowN[y] || 1); }
+      return o; });
+    const sm = (o, i, y) => (2 * o[i] + (y > 0 ? o[i - w] : o[i]) + (y < h - 1 ? o[i + w] : o[i])) / 4;
+    const [dr, dg, db] = dens;
+    for (let y = 0, i = 0, j = 0; y < h; y++) for (let x = 0; x < w; x++, i++, j += 4) {
+      if (lum) { const a = glow(sm(dr, i, y), ref); d[j] = a * 0.85; d[j + 1] = a; d[j + 2] = a * 0.85; }
+      else { d[j] = glow(sm(dr, i, y), ref); d[j + 1] = glow(sm(dg, i, y), ref); d[j + 2] = glow(sm(db, i, y), ref); }
+      d[j + 3] = 255;
+    }
+    v.dctx.putImageData(img, 0, 0);
+  }
+  // Цветоразностные Cb/Cr по Rec.709, в долях от полного размаха (±0,5)
+  const cbcr = (R, G, B) => { const Y = KR * R + KG * G + KB * B; return [(B - Y) / 1.8556 / 255, (R - Y) / 1.5748 / 255]; };
+  function vectorscope(px, v) {
+    const { img, w } = v, d = img.data, N = w * w, n = new Uint16Array(N), col = new Float32Array(N * 3);
+    const c0 = w / 2, k = 2 * (118 / 256 * w) * st.zoom;     // радиус круга = Cb/Cr 0,5
+    for (let i = 0; i < SW * SH * 4; i += 4) {
+      const R = px[i], G = px[i + 1], B = px[i + 2];
+      const [cb, cr] = cbcr(R, G, B);
+      const x = Math.round(c0 + cb * k), y = Math.round(c0 - cr * k);
+      if (x < 0 || x >= w || y < 0 || y >= w) continue;
+      const q = y * w + x; n[q]++; col[q * 3] += R; col[q * 3 + 1] += G; col[q * 3 + 2] += B;
+    }
+    const ref = 400 * (256 / w) * (256 / w);
+    for (let q = 0; q < N; q++) {
+      const a = glow(n[q], ref) / 255, j = q * 4;
+      if (!n[q]) { d[j] = d[j + 1] = d[j + 2] = 0; d[j + 3] = 255; continue; }
+      // след окрашен в цвет пикселей, но приглушённо — так видно, где какие оттенки
+      const R = col[q * 3] / n[q], G = col[q * 3 + 1] / n[q], B = col[q * 3 + 2] / n[q];
+      const m = 0.55;
+      d[j] = a * (m * 255 + (1 - m) * R); d[j + 1] = a * (m * 255 + (1 - m) * G); d[j + 2] = a * (m * 255 + (1 - m) * B); d[j + 3] = 255;
+    }
+    v.dctx.putImageData(img, 0, 0);
+  }
+  function histogram(px, v) {
+    const { w, h, img } = v, d = img.data;
+    const hr = new Uint32Array(256), hg = new Uint32Array(256), hb = new Uint32Array(256);
+    for (let i = 0; i < SW * SH * 4; i += 4) { hr[px[i]]++; hg[px[i + 1]]++; hb[px[i + 2]]++; }
+    let mx = 1; for (let i = 1; i < 255; i++) mx = Math.max(mx, hr[i], hg[i], hb[i]);   // края (0 и 255) не задают масштаб, но видны срезанными
+    d.fill(0); for (let j = 3; j < d.length; j += 4) d[j] = 255;
+    for (let x = 0; x < w; x++) {
+      // столбец собирает все уровни своего диапазона (максимум), чтобы узкие пики не терялись
+      const q0 = Math.floor(x * 256 / w), q1 = Math.max(q0 + 1, Math.floor((x + 1) * 256 / w));
+      let vr = 0, vg = 0, vb = 0; for (let q = q0; q < q1; q++) { vr = Math.max(vr, hr[q]); vg = Math.max(vg, hg[q]); vb = Math.max(vb, hb[q]); }
+      const tr = h - Math.min(h, vr / mx * h), tg = h - Math.min(h, vg / mx * h), tb = h - Math.min(h, vb / mx * h);
+      for (let y = 0; y < h; y++) { const j = (y * w + x) * 4; if (y >= tr) d[j] = 200; if (y >= tg) d[j + 1] = 200; if (y >= tb) d[j + 2] = 200; }
+    }
+    v.dctx.putImageData(img, 0, 0);
+  }
+
+  // ---- вывод с сеткой ----
+  function canvasFor(v) {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = Math.round(v.cv.clientWidth * dpr), H = Math.round(W * v.h / v.w);
+    if (v.cv.width !== W || v.cv.height !== H) { v.cv.width = W; v.cv.height = H; }
+    const c = v.cv.getContext('2d'); c.imageSmoothingEnabled = true;
+    c.drawImage(v.data, 0, 0, W, H);
+    return [c, W, H, dpr];
+  }
+  function label(c, t, x, y, dpr, align) { c.font = `${10 * dpr}px -apple-system, Segoe UI, sans-serif`; c.fillStyle = 'rgba(230,200,120,.85)'; c.textAlign = align || 'left'; c.fillText(t, x, y); }
+  function gridWave(v, parade) {
+    const [c, W, H, dpr] = canvasFor(v);
+    c.strokeStyle = 'rgba(230,200,120,.28)'; c.lineWidth = 1;
+    for (const lv10 of [0, 128, 256, 384, 512, 640, 768, 896, 1023]) {
+      const y = Math.round((1 - lv10 / 1023) * (H - 1)) + .5;
+      c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
+      if (lv10 % 256 === 0 || lv10 === 1023) label(c, lv10, 3 * dpr, Math.min(H - 3 * dpr, Math.max(11 * dpr, y - 2 * dpr)), dpr);
+    }
+    if (parade) {
+      const s = W / v.w, pw = v.pw * s, gap = v.gap * s;
+      ['R', 'G', 'B'].forEach((t, i) => label(c, t, i * (pw + gap) + pw - 4 * dpr, 12 * dpr, dpr, 'right'));
+    }
+  }
+  function gridVector(v) {
+    const [c, W, H, dpr] = canvasFor(v);
+    const s = W / 256, cx = W / 2, cy = H / 2, k = 2 * 118 * st.zoom * s;
+    c.strokeStyle = 'rgba(230,200,120,.28)'; c.lineWidth = 1;
+    c.beginPath(); c.arc(cx, cy, 118 * s, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(cx - 118 * s, cy); c.lineTo(cx + 118 * s, cy); c.moveTo(cx, cy - 118 * s); c.lineTo(cx, cy + 118 * s); c.stroke();
+    // линия тона кожи (~123°)
+    const a = 123 * Math.PI / 180; c.strokeStyle = 'rgba(240,170,120,.45)';
+    c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 118 * s, cy - Math.sin(a) * 118 * s); c.stroke();
+    // мишени цветных полос 75% (квадратики) и 100% (точки)
+    const T = [['R', 255, 0, 0], ['Mg', 255, 0, 255], ['B', 0, 0, 255], ['Cy', 0, 255, 255], ['G', 0, 255, 0], ['Yl', 255, 255, 0]];
+    for (const [t, R, G, B] of T) {
+      const [cb, cr] = cbcr(R * .75, G * .75, B * .75), x = cx + cb * k, y = cy - cr * k;
+      c.strokeStyle = 'rgba(230,200,120,.75)'; c.strokeRect(x - 5 * s, y - 5 * s, 10 * s, 10 * s);
+      const [cb1, cr1] = cbcr(R, G, B); c.fillStyle = 'rgba(230,200,120,.6)'; c.fillRect(cx + cb1 * k - 1.5 * s, cy - cr1 * k - 1.5 * s, 3 * s, 3 * s);
+      const lx = cx + cb * k * 1.32, ly = cy - cr * k * 1.32;
+      if (lx > 8 * s && lx < W - 8 * s && ly > 8 * s && ly < H - 4 * s) label(c, t, lx, ly + 4 * dpr, dpr, 'center');
+    }
+    if (st.zoom > 1) label(c, st.zoom + '×', W - 4 * dpr, H - 5 * dpr, dpr, 'right');
+  }
+  function gridHist(v) {
+    const [c, W, H, dpr] = canvasFor(v);
+    c.strokeStyle = 'rgba(230,200,120,.28)';
+    for (const lv10 of [256, 512, 768]) { const x = Math.round(lv10 / 1023 * W) + .5; c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); }
+    label(c, '0', 3 * dpr, H - 4 * dpr, dpr); label(c, '1023', W - 3 * dpr, H - 4 * dpr, dpr, 'right');
+  }
+
+  function frame() {
+    requestAnimationFrame(frame);
+    if (!st.open || document.hidden) return;
+    // до 10 обновлений в секунду; если телефон считает медленно — реже, чтобы не грелся и не мешал видео
+    const now = performance.now(); if (now - lastT < Math.max(95, cost * 4)) return;
+    const px = grab(); if (!px) return; lastT = now;
+    if (st.on.wave) { waveform(px, fit(views.wave), false); gridWave(views.wave, false); }
+    if (st.on.parade) { waveform(px, fit(views.parade), true); gridWave(views.parade, true); }
+    if (st.on.vector) { vectorscope(px, fit(views.vector)); gridVector(views.vector); }
+    if (st.on.hist) { histogram(px, fit(views.hist)); gridHist(views.hist); }
+    cost = cost * 0.7 + (performance.now() - now) * 0.3;
+  }
+  let cost = 20;
+  requestAnimationFrame(frame);
+
+  // ---- управление ----
+  panel.addEventListener('click', e => e.stopPropagation());
+  for (const b of panel.querySelectorAll('[data-sc]')) b.onclick = () => {
+    st.on[b.dataset.sc] = !st.on[b.dataset.sc];
+    if (!Object.values(st.on).some(Boolean)) st.on[b.dataset.sc] = true;   // хотя бы один скоп
+    save(); layout();
+  };
+  $('scBig').onclick = () => { st.big = !st.big; save(); layout(); };
+  $('scMode').onclick = () => { st.mode = st.mode === 'Y' ? 'RGB' : 'Y'; save(); layout(); };
+  $('scZoom').onclick = () => { st.zoom = st.zoom === 1 ? 2 : st.zoom === 2 ? 4 : 1; save(); layout(); };
+  $('scGain').onclick = () => { st.gain = (st.gain + 1) % GAINS.length; save(); dirty = true; };
+  $('scSize').onclick = () => { st.size = SIZE_ORDER[(SIZE_ORDER.indexOf(st.size) + 1) % SIZE_ORDER.length]; save(); layout(); };
+  $('scClose').onclick = () => show(false);
+  $('scHelp').onclick = () => {
+    const n = $('scNote'); const vis = n.style.display === 'block'; n.style.display = vis ? 'none' : 'block';
+    n.textContent = L('Скопы считаются на этом телефоне по картинке, которая пришла по сети (8 бит, после сжатия), по копии кадра 512×576. Шкала 0–1023 как в Resolve. Общие уровни, баланс и насыщенность совпадают с Resolve с точностью около 1%; мелкие одиночные блики могут сглаживаться. Квадратики на вектороскопе — цветные полосы 75%, линия — тон кожи. Окошко можно перетаскивать за верхнюю строку. «Скопы крупно» — скопы на весь экран, картинка в маленьком окне (на нём тоже можно ставить метки).',
+      'Scopes are computed on this phone from the picture that arrived over the network (8-bit, after compression), from a 512×576 copy of the frame. The 0–1023 scale matches Resolve. Overall levels, balance and saturation match Resolve within about 1%; tiny isolated highlights may be smoothed. Boxes on the vectorscope are 75% color bars, the line is the skin tone. Drag the window by its top row. «Big scopes» puts the scopes full screen with the picture in a small window (you can still place markers on it).');
+  };
+  // перетаскивание за заголовок
+  let drag = null;
+  $('scHead').addEventListener('pointerdown', e => {
+    if (e.target.tagName === 'BUTTON' || st.big) return;
+    const r = panel.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    $('scHead').setPointerCapture(e.pointerId);
+  });
+  $('scHead').addEventListener('pointermove', e => { if (!drag) return; st.x = e.clientX - drag.dx; st.y = e.clientY - drag.dy; place(); });
+  $('scHead').addEventListener('pointerup', () => { if (drag) { drag = null; save(); } });
+  window.addEventListener('resize', () => { if (st.open) layout(); });
+  $('btnScopes').onclick = e => { e.stopPropagation(); show(!st.open); };
+
+  return {
+    set dirty(v) { dirty = v; },
+    allow(on) {
+      allowed = on;
+      $('btnScopes').style.display = on ? '' : 'none';
+      if (!on) { if (st.open) note(L('Колорист выключил скопы', 'The colorist turned scopes off')); panel.classList.remove('show', 'big'); document.body.classList.remove('scbig'); $('btnScopes').classList.remove('on'); }
+      else if (st.open) show(true);
+    },
+  };
+})();
 
 // ---------- Интерфейс ----------
 $('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons')); };

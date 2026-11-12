@@ -21,7 +21,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 - [Why GradeStream](#why-gradestream)
 - [Remote editing review: sound in sync, smooth playback](#remote-editing-review-sound-in-sync-smooth-playback)
 - [Tour of the app](#tour-of-the-app)
-  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. Always 1920×1080](#4-always-19201080) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Client markers](#8-client-markers) · [9. Marker screenshots and the comment summary](#9-marker-screenshots-and-the-comment-summary) · [10. Viewers](#10-viewers) · [11. Tray icon, language, closing](#11-tray-icon-language-closing)
+  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. Always 1920×1080](#4-always-19201080) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
 - [Settings reference](#settings-reference)
 - [How it works](#how-it-works) · [Technical specification](#technical-specification) · [Color: what to trust](#color-what-to-trust-and-what-not-to)
 - [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations)
@@ -156,12 +156,36 @@ The client hears sound after tapping **Turn sound on** (phones only allow audio 
 | **Turn sound on** | starts audio (shown only when you stream audio) |
 | **Mark a point** | then tap the frame and type a comment — it reaches you instantly |
 | **Fullscreen** | full-screen picture; on iPhone it uses the system video player |
+| **Scopes** | waveform, parade, vectorscope, histogram — [see below](#8-scopes-for-the-client) (shown when you allow it) |
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
 | **Hide** | hides the buttons; tap the screen to bring them back |
 
 The page follows the language of the client's phone (English or Russian). With the internet link it also keeps the phone screen from dimming.
 
-### 8. Client markers
+### 8. Scopes for the client
+
+The client can open **waveform, RGB parade, vectorscope and histogram** right on the phone — the button **Scopes** in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once).
+
+Two layouts, one tap apart:
+
+| Big picture (scopes in a corner) | Big scopes (picture in a small window) |
+|---|---|
+| <img src="docs/img/scopes-corner.png" width="420" alt="Waveform and vectorscope in a small window over the picture"> | <img src="docs/img/scopes-big.png" width="420" alt="Waveform, parade and vectorscope full screen, picture in a small window"> |
+
+- **Big picture** — a small window over the frame with any set of scopes; drag it by its top row, sizes S / M / L / XL.
+- **Big scopes** — scopes fill the screen, the picture shrinks to a small window (on the right when the phone is sideways, on top when upright). Markers can still be placed on the small picture.
+- Waveform in **Y** (Rec.709 luma) or **RGB** overlay; vectorscope at **1× / 2× / 4×** with 75% color-bar targets, 100% dots and the skin-tone line; trace brightness in three steps. The 0–1023 scale matches Resolve.
+
+<p align="center"><img src="docs/img/scopes-big-portrait.png" width="300" alt="Big scopes with the phone upright"></p>
+
+**What the scopes show, honestly.** They are computed on the phone from **the picture that arrived** — 8-bit, after H.264 — from a 512×576 copy of the frame, up to 10 times a second (less often on a slow phone). So they describe what the client actually receives, not Resolve's internal 32-bit image:
+
+- levels, balance and saturation agree with the source within about 1%: in the automated test (75% color bars + gray ramp, both paths) bar levels on the waveform are off by at most 1.2 of 255 and vectorscope traces sit within 2.2 px of the targets (the target box is ±5 px);
+- tiny isolated highlights may be averaged away by the downscaled copy;
+- smooth synthetic gradients show fine horizontal combing — that is the real distribution of 8-bit levels after compression, which Resolve's scopes (fed before compression) don't have;
+- for grading decisions use Resolve's own scopes; the client scopes are for talking about the same picture with the same tools.
+
+### 9. Client markers
 
 <p align="center"><img src="docs/img/preview-markers.png" width="760" alt="Preview with two client markers and their comments"></p>
 
@@ -175,7 +199,7 @@ When the client places a marker you get:
 
 <br clear="right">
 
-### 9. Marker screenshots and the comment summary
+### 10. Marker screenshots and the comment summary
 
 Every marker saves a PNG of **the frame the client was actually looking at** — the app keeps the last ~4.5 s of frames and compensates for each viewer's latency — with the marker, the number and the comment burned in:
 
@@ -189,7 +213,7 @@ All markers of a session are collected in `comments.html` (with "Done" checkboxe
 - **A separate subfolder for each session** — on by default; off writes into the chosen folder with the date in file names. Nothing is ever overwritten.
 - **Open folder** / **All comments** — open the folder or the summary page.
 
-### 10. Viewers
+### 11. Viewers
 
 <img src="docs/img/panel-viewers.png" width="370" align="right" alt="Viewers panel: three devices with path and bitrate">
 
@@ -197,7 +221,7 @@ Each viewer is listed with the device type, how they're connected (via internet 
 
 <br clear="right">
 
-### 11. Tray icon, language, closing
+### 12. Tray icon, language, closing
 
 - GradeStream has its **own taskbar icon** (even though it uses the Edge/Chrome engine) and an icon **near the clock**: click to bring the window back; right-click for **Show window / Stop streaming / Exit**. The tooltip shows "live, viewers: N".
 - Minimizing during a live stream shows a one-time notification about where the app went.
@@ -215,6 +239,7 @@ All settings are remembered between launches.
 | Bitrate | Quality | 4 / 8 / 12 / 16 / 24 Mbit/s | 8 Mbit/s |
 | Frames per second | Quality | 12 / 24 / 25 / 30 / 50 / 60 | 25 |
 | Playback on viewers | Quality | Lowest latency · Smooth & in sync | Lowest latency |
+| Client scopes | Quality | Allowed · Off | Allowed |
 | Audio source | Audio | none · output device · single application · test tone | none |
 | Audio bitrate | Audio | 64 / 128 / 192 kbit/s | 128 kbit/s |
 | Markers on top of the Clean Feed | Client markers | on / off · monitor | on · auto-detected |

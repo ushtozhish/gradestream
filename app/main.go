@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const appVersion = "2.11.0"
+const appVersion = "2.12.0"
 
 //go:embed web/*
 var webFS embed.FS
@@ -84,6 +84,7 @@ type Hub struct {
 	lastConfig string
 	lastAudio  string
 	lastPlay   string // режим подачи у зрителей: live | sync
+	lastScopes string // разрешены ли зрителям скопы (waveform, парад, вектороскоп)
 	live       bool
 	lastKFReq  time.Time
 	hostSeen   time.Time
@@ -419,6 +420,11 @@ func routes() *http.ServeMux {
 				hub.lastPlay = string(data)
 				hub.mu.Unlock()
 				hub.broadcastText(string(data))
+			case "scopes":
+				hub.mu.Lock()
+				hub.lastScopes = string(data)
+				hub.mu.Unlock()
+				hub.broadcastText(string(data))
 			case "diag": // что умеет браузер окна трансляции — для разбора проблем
 				log.Println("host browser:", string(data))
 			case "lang":
@@ -671,7 +677,7 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 
 	hub.mu.Lock()
 	hub.viewers[v.id] = v
-	cfg, live, acfg, pcfg := hub.lastConfig, hub.live, hub.lastAudio, hub.lastPlay
+	cfg, live, acfg, pcfg, scfg := hub.lastConfig, hub.live, hub.lastAudio, hub.lastPlay, hub.lastScopes
 	hub.mu.Unlock()
 	log.Printf("viewer %s (%s) joined", v.id, v.dev)
 
@@ -686,6 +692,9 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 	}
 	if pcfg != "" {
 		v.enqueue(outMsg{op: opText, data: []byte(pcfg)}, true)
+	}
+	if scfg != "" {
+		v.enqueue(outMsg{op: opText, data: []byte(scfg)}, true)
 	}
 	sendState()
 
