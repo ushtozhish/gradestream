@@ -23,9 +23,17 @@ start() { # $1 = simulated network jitter, ms
   start 0; GS_LOG=gs.log BR=8000000 node colortest.js 2>&1
   echo '```'
   echo
-  echo "## Client scopes (75% bars + gray ramp through both paths)"
+  echo "## Client scopes accuracy (75% bars + gray ramp through both paths)"
   echo '```'
   start 0; GS_LOG=gs.log node scopetest.js 2>&1
+  echo '```'
+  echo
+  echo "## Client layout, scope switching, portrait screens, out-of-range alarm"
+  echo '```'
+  start 0; GS_LOG=gs.log SRC=land node layouttest.js 2>&1
+  start 0; GS_LOG=gs.log SRC=port node layouttest.js 2>&1
+  start 0; GS_LOG=gs.log CASE=bad node alarmtest.js 2>&1
+  start 0; GS_LOG=gs.log CASE=good node alarmtest.js 2>&1
   echo '```'
   echo
   echo "## Audio/video sync and frame pacing"

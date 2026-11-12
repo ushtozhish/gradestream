@@ -1,4 +1,4 @@
-// Checks viewer scopes (waveform, parade, vectorscope, histogram) against a known test image
+// Checks viewer scopes (waveform, parade, vectorscope) against a known test image
 // sent through the real GradeStream pipeline, for both the internet and the Wi-Fi path.
 // Run like colortest.js: GS_LOG=gs.log node scopetest.js   (SHOTS=dir saves screenshots)
 const fs = require('fs'); const { chromium } = require('playwright');
@@ -33,22 +33,22 @@ const CbCr = c => { const y = Y709(c); return [(c[2] - y) / 1.8556 / 255, (c[0] 
   let fails = 0;
   for (const [name, url] of [['internet', `http://127.0.0.1:8787/v/${room}`], ['wifi', lanLink]]) {
     const v = await ctx.newPage(); await v.setViewportSize({ width: 844, height: 390 });
-    await v.addInitScript(() => localStorage.setItem('gs.view.scopes', JSON.stringify({ on: { wave: true, parade: true, vector: true, hist: true }, size: 'S', open: false })));
+    await v.addInitScript(() => localStorage.setItem('gs.view.scopes', JSON.stringify({ on: { wave: true, parade: true, vector: true }, open: false })));
     await v.goto(url); await sleep(5000);
     await v.bringToFront();
     const btnShown = await v.evaluate(() => getComputedStyle(document.getElementById('btnScopes')).display !== 'none');
     await v.click('#btnScopes');
-    await v.waitForFunction(() => { const V = window.__scopeViews; return V && ['wave', 'parade', 'vector', 'hist'].every(k => V[k] && V[k].w > 0); }, null, { timeout: 30000 }).catch(() => {});
+    await v.waitForFunction(() => { const V = window.__scopeViews; return V && ['wave', 'parade', 'vector'].every(k => V[k] && V[k].w > 0); }, null, { timeout: 30000 }).catch(() => {});
     await sleep(1500);
     const r = await v.evaluate(([BARS]) => {
       const V = window.__scopeViews, out = {};
       const img = k => { const x = V[k]; return x.dctx.getImageData(0, 0, x.w, x.h).data; };
       // waveform (Y): bar centre columns, brightest row in the top 60% part = 255 - Y
       const w = img('wave'), W = V.wave.w, H = V.wave.h; out.size = [W, H, V.vector.w];
-      // rows are 8-bit levels scaled to the scope height; each column also holds one gray-ramp level,
+      // rows are 8-bit levels scaled to the scope height; the trace may be colored (Colorize), so look at the brightest channel; each column also holds one gray-ramp level,
       // so look for the bright trace nearest the expected bar level
       out.wave = BARS.map(([, c], i) => { const col = Math.round((i + 0.5) / BARS.length * W), Y = .2126*c[0]+.7152*c[1]+.0722*c[2], e = (255 - Y) / 255 * (H - 1); let row = -999;
-        for (let y = 0; y < H; y++) if (w[(y * W + col) * 4 + 1] > 150 && Math.abs(y - e) < Math.abs(row - e)) row = y; return 255 - row / (H - 1) * 255; });
+        for (let y = 0; y < H; y++) { const q = (y * W + col) * 4; if (Math.max(w[q], w[q + 1], w[q + 2]) > 150 && Math.abs(y - e) < Math.abs(row - e)) row = y; } return 255 - row / (H - 1) * 255; });
       out.rowUnit = 255 / (H - 1);
       // vectorscope: brightest pixel near each 75% target
       const vs = img('vector'), N = V.vector.w, k = 2 * 118 / 256 * N;

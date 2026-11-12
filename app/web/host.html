@@ -21,6 +21,7 @@
   .panel h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 10px; font-weight:600; }
   .stage { position:relative; background:#000; border-radius:6px; overflow:hidden; aspect-ratio:16/9; border:1px solid var(--line); }
   .stage canvas { width:100%; height:100%; display:block; object-fit:contain; }
+  .stage.portrait { aspect-ratio:9/16; width:min(100%, calc(72vh * 9 / 16)); margin:0 auto; }
   .stage:fullscreen { aspect-ratio:auto; border:none; border-radius:0; }
   .stage:fullscreen .badge { display:none !important; }
   #btnFS { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.65); border-color:#444; font-size:12px; padding:5px 10px; }
@@ -85,7 +86,7 @@
       <canvas id="out" width="1920" height="1080"></canvas>
       <div class="empty" id="empty">
         <div data-en="Click «Choose screen» and pick the monitor with the Clean Feed">Нажми «Выбрать экран» и укажи монитор с Clean Feed</div>
-        <div class="muted" data-en="This shows exactly what the client sees: 1920×1080">Здесь будет ровно то, что видит клиент: 1920×1080</div>
+        <div class="muted" data-en="This shows exactly what the client sees: 1920×1080 (1080×1920 for a monitor in portrait orientation)">Здесь будет ровно то, что видит клиент: 1920×1080 (1080×1920 для монитора в книжной ориентации)</div>
       </div>
       <div class="badge" id="badge" style="display:none"></div>
       <button id="btnFS" title="Двойной клик по превью тоже разворачивает" data-en-title="Double-click the preview to go fullscreen too" data-en="Fullscreen">Во весь экран</button>
@@ -130,7 +131,7 @@
     </div>
 
     <div class="panel">
-      <h2 data-en="Quality (output is always 1920×1080)">Качество (выход всегда 1920×1080)</h2>
+      <h2 data-en="Quality (output 1920×1080 or 1080×1920)">Качество (выход 1920×1080 или 1080×1920)</h2>
       <div class="row"><label class="l" data-en="Bitrate">Битрейт</label>
         <select id="bitrate">
           <option value="4000000" data-en="4 Mbit/s — weak internet">4 Мбит/с — слабый интернет</option>
@@ -156,7 +157,7 @@
       <div class="muted" id="playoutInfo" data-en="«Smooth &amp; in sync» adds a 0.12–0.7 s buffer on viewers (it adapts to the network) so frames come evenly and sound matches the picture. Sound is always synced when a viewer turns it on.">«Плавно и синхронно» — у зрителей буфер 0,12–0,7 с (подстраивается под сеть): кадры идут ровно, звук совпадает с картинкой. Если зритель включил звук, синхронизация включается всегда.</div>
       <div class="row"><label class="l" data-en="Client scopes">Скопы у клиента</label>
         <select id="scopesAllow" style="flex:1;min-width:0">
-          <option value="on" data-en="Allowed — waveform, parade, vectorscope, histogram">Разрешены — waveform, парад, вектороскоп, гистограмма</option>
+          <option value="on" data-en="Allowed — Waveform, Parade, Vectorscope">Разрешены — Waveform, Parade, Vectorscope</option>
           <option value="off" data-en="Off — clients see only the picture">Выключены — клиент видит только картинку</option>
         </select></div>
       <div class="muted" id="encInfo"></div>
@@ -206,7 +207,7 @@
 
 <div id="fmtDlg">
   <div class="box">
-    <h3 data-en="Screen resolution is not 1920×1080">Разрешение экрана не 1920×1080</h3>
+    <h3 id="fmtTitle">Разрешение экрана не 1920×1080</h3>
     <div class="muted" id="fmtWhy"></div>
     <form id="fmtForm"></form>
     <label class="muted" style="display:block;margin:10px 0"><input type="checkbox" id="fmtRemember" checked> <span data-en="Remember for this resolution">Запомнить для этого разрешения</span></label>
@@ -248,7 +249,18 @@ function setLangUI(lang, fromServer) {
   if (changed && typeof refreshDynamic === 'function') refreshDynamic();
 }
 applyStatic();
-const OUT_W = 1920, OUT_H = 1080;
+// Выход: 1920×1080, а для монитора в книжной ориентации (Windows) — 1080×1920
+let OUT_W = 1920, OUT_H = 1080;
+const outName = () => `${OUT_W}×${OUT_H}`, aspName = () => OUT_W > OUT_H ? '16:9' : '9:16';
+function setOutput(portrait) {
+  const w = portrait ? 1080 : 1920, h = portrait ? 1920 : 1080;
+  if (w === OUT_W && h === OUT_H) return;
+  OUT_W = w; OUT_H = h;
+  canvas.width = w; canvas.height = h;
+  $('stage').classList.toggle('portrait', portrait);
+  while (frameHistory.length) frameHistory.shift().bmp.close();
+  if (running) setupEncoder();                     // кодер заново под новый размер; зрители получат новый config
+}
 const $ = id => document.getElementById(id);
 const canvas = $('out');
 const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
@@ -317,30 +329,31 @@ function sendLive() { sendPlayout(); sendJSON({ t: 'live', on: running }); if (r
 
 // ================= Формат 1920×1080 =================
 function crop169(w, h) {
-  // Максимальная область 16:9 по центру
-  let cw = w, ch = Math.round(w * 9 / 16);
-  if (ch > h) { ch = h; cw = Math.round(h * 16 / 9); }
+  // Максимальная область с пропорциями выхода (16:9 или 9:16) по центру
+  const A = OUT_W / OUT_H;
+  let cw = w, ch = Math.round(w / A);
+  if (ch > h) { ch = h; cw = Math.round(h * A); }
   cw -= cw % 2; ch -= ch % 2;
   return { sx: Math.round((w - cw) / 2), sy: Math.round((h - ch) / 2), sw: cw, sh: ch };
 }
 
 function fmtOptions(w, h) {
-  const is169 = Math.abs(w / h - 16 / 9) < 0.005;
+  const A = OUT_W / OUT_H, is169 = Math.abs(w / h - A) < 0.005, an = aspName(), on = outName();
   const opts = [];
   if (is169) {
     const dir = w > OUT_W ? L('Даунскейл', 'Downscale') : L('Апскейл', 'Upscale');
-    opts.push({ id: 'scale', rec: true, title: `${dir} ${w}×${h} → 1920×1080`,
-      desc: w > OUT_W ? L('Пропорции те же (16:9), картинка уменьшается целиком. Стандартный путь для 4K / 1440p.', 'Same proportions (16:9), the whole picture is scaled down. The standard choice for 4K / 1440p.') : L('Пропорции те же, картинка увеличивается. Детализация не прибавится, но формат будет стандартный.', 'Same proportions, the picture is scaled up. No extra detail, but a standard format.') });
-    if (w > OUT_W) opts.push({ id: 'crop1', title: L('Кроп 1920×1080 из центра без масштаба', '1920×1080 center crop, no scaling'),
+    opts.push({ id: 'scale', rec: true, title: `${dir} ${w}×${h} → ${on}`,
+      desc: w > OUT_W ? L(`Пропорции те же (${an}), картинка уменьшается целиком. Стандартный путь для 4K / 1440p.`, `Same proportions (${an}), the whole picture is scaled down. The standard choice for 4K / 1440p.`) : L('Пропорции те же, картинка увеличивается. Детализация не прибавится, но формат будет стандартный.', 'Same proportions, the picture is scaled up. No extra detail, but a standard format.') });
+    if (w > OUT_W) opts.push({ id: 'crop1', title: L(`Кроп ${on} из центра без масштаба`, `${on} center crop, no scaling`),
       desc: L('Клиент увидит только центральный фрагмент экрана, зато пиксель в пиксель — удобно для проверки шума, зерна и деталей.', 'The client sees only the center of the screen, but pixel for pixel — handy for checking noise, grain and detail.') });
   } else {
     const c = crop169(w, h);
     const exact = c.sw === OUT_W && c.sh === OUT_H;
-    const what = w / h > 16 / 9 ? L('по бокам', 'at the sides') : L('сверху и снизу', 'top and bottom');
+    const what = w / h > A ? L('по бокам', 'at the sides') : L('сверху и снизу', 'top and bottom');
     opts.push({ id: 'crop', rec: true,
-      title: exact ? L(`Кроп лишнего: 1920×1080 из центра (${what})`, `Crop the extra: 1920×1080 from the center (${what})`) : L(`Кроп до 16:9 (${c.sw}×${c.sh} из центра) → ${c.sw > OUT_W ? 'даунскейл' : 'апскейл'} до 1920×1080`, `Crop to 16:9 (${c.sw}×${c.sh} from the center) → ${c.sw > OUT_W ? 'downscale' : 'upscale'} to 1920×1080`),
-      desc: exact ? L(`Обрезаются полосы ${what}, остальное пиксель в пиксель. Resolve выводит Clean Feed 16:9 по центру такого монитора — значит, обрезается только пустое поле.`, `Bars ${what} are cut off, the rest is pixel for pixel. Resolve centers a 16:9 Clean Feed on such a monitor, so only empty margins are removed.`)
-                  : L(`Обрезаются полосы ${what}, остаётся область 16:9. Resolve выводит Clean Feed именно туда, поэтому картинка не теряется.`, `Bars ${what} are cut off, leaving a 16:9 area. Resolve puts the Clean Feed exactly there, so no picture is lost.`) });
+      title: exact ? L(`Кроп лишнего: ${on} из центра (${what})`, `Crop the extra: ${on} from the center (${what})`) : L(`Кроп до ${an} (${c.sw}×${c.sh} из центра) → ${c.sw > OUT_W ? 'даунскейл' : 'апскейл'} до ${on}`, `Crop to ${an} (${c.sw}×${c.sh} from the center) → ${c.sw > OUT_W ? 'downscale' : 'upscale'} to ${on}`),
+      desc: exact ? L(`Обрезаются полосы ${what}, остальное пиксель в пиксель. Resolve выводит Clean Feed ${an} по центру такого монитора — значит, обрезается только пустое поле.`, `Bars ${what} are cut off, the rest is pixel for pixel. Resolve centers a ${an} Clean Feed on such a monitor, so only empty margins are removed.`)
+                  : L(`Обрезаются полосы ${what}, остаётся область ${an}. Resolve выводит Clean Feed именно туда, поэтому картинка не теряется.`, `Bars ${what} are cut off, leaving a ${an} area. Resolve puts the Clean Feed exactly there, so no picture is lost.`) });
     opts.push({ id: 'fit', title: L('Вписать весь экран с чёрными полями', 'Fit the whole screen with black bars'),
       desc: L('Ничего не обрезается, но картинка меньше и с полями. Пригодится, если кадр выведен не по центру.', 'Nothing is cut, but the picture is smaller with bars. Useful if the frame is not centered.') });
   }
@@ -358,7 +371,7 @@ function computeRect(w, h, m) {
   return { sx: 0, sy: 0, sw: w, sh: h, dx: 0, dy: 0, dw: OUT_W, dh: OUT_H }; // exact
 }
 
-const MODE_NAMES = () => ({ exact: L('1920×1080 без изменений', '1920×1080 as is'), scale: L('масштаб до 1920×1080', 'scaled to 1920×1080'), crop1: L('центр 1920×1080 1:1', '1920×1080 center 1:1'), crop: L('кроп до 16:9', 'cropped to 16:9'), fit: L('вписано с полями', 'fit with bars') });
+const MODE_NAMES = () => ({ exact: L(`${outName()} без изменений`, `${outName()} as is`), scale: L(`масштаб до ${outName()}`, `scaled to ${outName()}`), crop1: L(`центр ${outName()} 1:1`, `${outName()} center 1:1`), crop: L(`кроп до ${aspName()}`, `cropped to ${aspName()}`), fit: L('вписано с полями', 'fit with bars') });
 
 function applyMode(m) {
   mode = m;
@@ -376,6 +389,7 @@ function savedMode(w, h) { try { return localStorage.getItem(storeKey(w, h)); } 
 
 function onSourceSize(w, h) {
   srcW = w; srcH = h;
+  setOutput(h > w);                                    // монитор в книжной ориентации → вертикальный выход
   sendJSON({ t: 'monitors' });   // подобрать монитор для меток по разрешению
   if (w === OUT_W && h === OUT_H) { applyMode('exact'); return; }
   const opts = fmtOptions(w, h);
@@ -387,8 +401,9 @@ function onSourceSize(w, h) {
 
 function openFmtDialog() {
   const opts = fmtOptions(srcW, srcH);
-  const is169 = Math.abs(srcW / srcH - 16 / 9) < 0.005;
-  $('fmtWhy').textContent = L(`Захваченный экран: ${srcW}×${srcH}${is169 ? ' (16:9)' : ` (${(srcW / srcH).toFixed(2)}:1, не 16:9)`}. Клиенту всегда уходит 1920×1080 — выбери, как привести.`, `Captured screen: ${srcW}×${srcH}${is169 ? ' (16:9)' : ` (${(srcW / srcH).toFixed(2)}:1, not 16:9)`}. The client always gets 1920×1080 — choose how to convert.`);
+  const an = aspName(), is169 = Math.abs(srcW / srcH - OUT_W / OUT_H) < 0.005;
+  $('fmtWhy').textContent = L(`Захваченный экран: ${srcW}×${srcH}${is169 ? ` (${an})` : ` (${(srcW / srcH).toFixed(2)}:1, не ${an})`}. Клиенту уходит ${outName()} — выбери, как привести.`, `Captured screen: ${srcW}×${srcH}${is169 ? ` (${an})` : ` (${(srcW / srcH).toFixed(2)}:1, not ${an})`}. The client gets ${outName()} — choose how to convert.`);
+  $('fmtTitle').textContent = L(`Разрешение экрана не ${outName()}`, `Screen resolution is not ${outName()}`);
   $('fmtForm').innerHTML = opts.map(o => `
     <label class="opt${o.rec ? ' rec' : ''}"><input type="radio" name="m" value="${o.id}" ${o.id === mode ? 'checked' : ''}><b>${o.title}</b><div class="d">${o.desc}</div></label>`).join('');
   $('fmtDlg').style.display = 'flex';
@@ -727,7 +742,7 @@ function setLive() {
 setInterval(() => {
   if (!running) { $('badge').style.display = 'none'; return; }
   $('badge').style.display = '';
-  $('badge').textContent = `1920×1080 · ${(frameCount / 2).toFixed(0)} ${L('к/с отправляется', 'fps sent')}` + (paused ? L(' · пауза', ' · paused') : '');
+  $('badge').textContent = `${outName()} · ${(frameCount / 2).toFixed(0)} ${L('к/с отправляется', 'fps sent')}` + (paused ? L(' · пауза', ' · paused') : '');
   frameCount = 0;
 }, 2000);
 
@@ -1007,7 +1022,7 @@ $('btnClearMarks').onclick = () => { sendJSON({ t: 'overlay-clear' }); document.
 try { $('ovOn').checked = localStorage.getItem('gs.ovOn') !== '0'; } catch {}
 $('ovOn').onchange = () => { try { localStorage.setItem('gs.ovOn', $('ovOn').checked ? '1' : '0'); } catch {} if (!$('ovOn').checked) sendJSON({ t: 'overlay-clear' }); };
 
-// Точка клиента (доля кадра 1920×1080) → пиксель захваченного монитора
+// Точка клиента (доля кадра выхода) → пиксель захваченного монитора
 function toSource(x, y) {
   if (!rect) return null;
   const ox = x * OUT_W, oy = y * OUT_H;

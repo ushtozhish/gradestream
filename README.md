@@ -21,7 +21,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 - [Why GradeStream](#why-gradestream)
 - [Remote editing review: sound in sync, smooth playback](#remote-editing-review-sound-in-sync-smooth-playback)
 - [Tour of the app](#tour-of-the-app)
-  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. Always 1920×1080](#4-always-19201080) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
+  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. 1920×1080, or 1080×1920 for vertical videos](#4-19201080-or-10801920-for-vertical-videos) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
 - [Settings reference](#settings-reference)
 - [How it works](#how-it-works) · [Technical specification](#technical-specification) · [Color: what to trust](#color-what-to-trust-and-what-not-to)
 - [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations)
@@ -29,7 +29,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 ## Why GradeStream
 
 - **Zero friction for the client.** One link, opened on a phone during a WhatsApp/Zoom call. No app, no account, no plug-ins.
-- **Built for grading reviews.** Clean Feed monitor in, a fixed 1920×1080 picture out, color-tagged so the decoder reconstructs the RGB values Resolve outputs ([measured](#color-what-to-trust-and-what-not-to): mean ΔE2000 0.22).
+- **Built for grading reviews.** Clean Feed monitor in, a fixed 1920×1080 picture out (1080×1920 for vertical videos), color-tagged so the decoder reconstructs the RGB values Resolve outputs ([measured](#color-what-to-trust-and-what-not-to): mean ΔE2000 0.22).
 - **Feedback lands on the frame.** The client taps the image and types a comment; you see it on top of your Clean Feed monitor, and a screenshot of the exact frame they meant is saved with the note.
 - **Remote or in the room.** Over the internet via Cloudflare Tunnel, or straight over Wi-Fi with no internet at all — or both at once.
 - **Also for editing reviews.** "Smooth & in sync" playback keeps sound in sync with the picture and frames evenly paced, so a remote director can judge cuts and timing ([measured](#remote-editing-review-sound-in-sync-smooth-playback)).
@@ -74,7 +74,7 @@ Versions before 2.11 played sound and picture independently, without synchroniza
 
 ### 1. Control window
 
-The control window opens when you start GradeStream. The large preview shows **exactly what the client receives** — the 1920×1080 frame after cropping/scaling. Client markers appear on it too.
+The control window opens when you start GradeStream. The large preview shows **exactly what the client receives** — the 1920×1080 (or 1080×1920) frame after cropping/scaling. Client markers appear on it too.
 
 - **Choose screen** — pick the monitor (or a window) to stream. Choose "Entire screen" → your Clean Feed monitor.
 - **Pause** — freezes the stream; the client keeps the last frame. **Stop** ends the stream.
@@ -108,9 +108,9 @@ Click the QR code to show it full-screen — handy for a room full of people:
 
 <p align="center"><img src="docs/img/qr-fullscreen.png" width="640" alt="Full-screen QR code"></p>
 
-### 4. Always 1920×1080
+### 4. 1920×1080, or 1080×1920 for vertical videos
 
-The client always gets a 1920×1080 frame. If your monitor isn't 1080p, GradeStream asks how to convert it and remembers the answer for that resolution (change it later with **change** under the preview).
+The client gets a 1920×1080 frame. If the Clean Feed monitor is set to **portrait** orientation in Windows (vertical edits for Reels, Shorts, TikTok), the frame is **1080×1920** instead — everything else works the same: markers, their screenshots, markers on top of the Clean Feed, scopes. If your monitor isn't 1080p, GradeStream asks how to convert it and remembers the answer for that resolution (change it later with **change** under the preview).
 
 <p align="center"><img src="docs/img/format-dialog.png" width="560" alt="Resolution dialog: crop to 16:9 and downscale, or fit with black bars"></p>
 
@@ -121,6 +121,15 @@ The client always gets a 1920×1080 frame. If your monitor isn't 1080p, GradeStr
 | 720p and smaller 16:9 | ★ upscale to 1920×1080 |
 | 1920×1200 | ★ crop the 60-px bars top and bottom (Resolve centers a 16:9 Clean Feed there) · fit with bars |
 | 2560×1600, ultrawide, others | ★ crop to 16:9 from the center → scale to 1920×1080 · fit with bars |
+| 1080×1920 (portrait) | used as is, vertical frame |
+| 2160×3840 and other 9:16 | ★ downscale to 1080×1920 · 1:1 center crop |
+| 1200×1920 and other portrait | ★ crop to 9:16 from the center · fit with bars |
+
+On the phone a vertical frame fills the screen when the phone is upright; held sideways it stands in the middle. With scopes open it gets its own column (sideways) or the top of the screen (upright):
+
+| Phone sideways | Phone upright |
+|---|---|
+| <img src="docs/img/vertical-sideways.png" width="440" alt="Vertical frame in a column on the left, scopes on the right"> | <img src="docs/img/vertical-upright.png" width="200" alt="Vertical frame on top, scopes below"> |
 
 ### 5. Quality
 
@@ -157,7 +166,7 @@ The client gets one row of small tiles; a tile that is on turns orange. Tap the 
 |---|---|
 | **Speaker** | sound on / off (shown only when you stream audio) |
 | **Pin** | marker mode: tap the frame and type a comment — it reaches you instantly |
-| **Scope** | waveform, parade, vectorscope, histogram — [see below](#8-scopes-for-the-client) (shown when you allow it) |
+| **Scope** | Waveform, Parade, Vectorscope — [see below](#8-scopes-for-the-client) (shown when you allow it) |
 | **Frame corners** | full-screen picture; on iPhone it uses the system video player |
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
 | **Arrow down** | hides the tiles |
@@ -166,25 +175,35 @@ The page follows the language of the client's phone (English or Russian). With t
 
 ### 8. Scopes for the client
 
-The client can open **waveform, RGB parade, vectorscope and histogram** right on the phone — the **Scopes** tile in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once).
+The client can open **Waveform, Parade and Vectorscope** right on the phone — the **Scope** tile in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once). Scope names stay in English in both languages — that is how people who use them know them.
 
 Scopes never cover the picture. When they open, the picture moves aside and the screen is split into black tiles on a 10% gray background — no empty space. Two layouts, one tap apart:
 
 | Big picture | Big scopes |
 |---|---|
-| <img src="docs/img/scopes-corner.png" width="420" alt="Picture on the left, waveform, parade and vectorscope in a column on the right"> | <img src="docs/img/scopes-big.png" width="420" alt="Waveform, parade and vectorscope large, picture as one small tile"> |
+| <img src="docs/img/scopes-corner.png" width="420" alt="Picture on the left, waveform, parade and vectorscope on the right"> | <img src="docs/img/scopes-big.png" width="420" alt="Waveform, parade and vectorscope large, picture as one smaller tile"> |
 
-- **Big picture** — the picture keeps about two thirds of the screen, the scopes stack next to it (below it when the phone is upright).
+- **Big picture** — the picture keeps about two thirds of the screen, the scopes sit next to it (below it when the phone is upright).
 - **Big scopes** — the scopes take the screen and the picture becomes one smaller tile (a strip on top when upright). Markers can still be placed on it.
-- Tabs at the top switch each scope on and off; the remaining scopes grow to fill the freed space.
-- The icon at the top right switches between the two layouts; the cross closes the scopes.
+- Tabs at the top switch each scope on and off; the remaining scopes grow to fill the freed space. The last scope can't be switched off — close the scopes with the cross instead.
+- **Color / mono** (half-circle icon) for all scopes at once. Color: the waveform takes the color of the pixels (like Resolve's Colorize), parade in R/G/B, vectorscope in the hues of the picture. Mono: white trace on black.
 - The look follows Resolve: black scope area, white 0–1023 scale every 128, thin graticule over the trace; the vectorscope has 75% color-bar targets, 100% dots and the skin-tone line.
 
-<p align="center"><img src="docs/img/scopes-big-portrait.png" width="300" alt="Big scopes with the phone upright: picture strip on top, waveform and vectorscope below"></p>
+<p align="center"><img src="docs/img/scopes-big-portrait.png" width="260" alt="Big scopes with the phone upright: picture strip on top, scopes below"></p>
+
+**Out-of-range alarm.** A scope's frame blinks red and shows what is wrong:
+
+- **Waveform** — `▲ 1023` / `▼ 0`: more than 0.3% of the picture sits at the very top or bottom of the luma range (blown highlights, crushed blacks);
+- **Parade** — the same for any of the R, G, B channels;
+- **Vectorscope** — `SAT > 100%`: more than 0.3% of the picture is outside the outer circle (saturation over 100%).
+
+Solid black rows and columns (letterbox and pillarbox bars) and the compression-blurred edge next to them are ignored, so a 2.39 grade doesn't trigger it. The alarm holds for one second so it doesn't flicker between frames.
+
+<p align="center"><img src="docs/img/scopes-alarm.png" width="560" alt="Waveform, parade and vectorscope blinking red on a clipped, over-saturated frame"></p>
 
 **What the scopes show, honestly.** They are computed on the phone from **the picture that arrived** — 8-bit, after H.264 — from a 768×432 copy of the frame, up to 10 times a second (less often on a slow phone). So they describe what the client actually receives, not Resolve's internal 32-bit image:
 
-- levels, balance and saturation agree with the source: in the automated test (75% color bars + gray ramp, both paths) bar levels on the waveform are off by at most 1 of 255 and vectorscope traces sit within 2 px of the targets;
+- levels, balance and saturation agree with the source: in the automated test (75% color bars + gray ramp, both paths) bar levels on the waveform are off by at most 1.5 of 255 and vectorscope traces sit within 3 px of the targets;
 - tiny isolated highlights may be averaged away by the downscaled copy;
 - the trace is spread evenly inside each 8-bit step, like a continuous signal in Resolve, so it doesn't break into horizontal lines; the position of the trace doesn't change;
 - for grading decisions use Resolve's own scopes; the client scopes are for talking about the same picture with the same tools.
@@ -261,7 +280,7 @@ All settings are remembered between launches.
 │                       Capture, 8-bit RGB)                  │
 │        ↓                                                   │
 │ GradeStream window (Edge/Chrome engine):                   │
-│   crop/scale → 1920×1080 frame → H.264 (WebCodecs,         │
+│   crop/scale → 1920×1080 / 1080×1920 → H.264 (WebCodecs,   │
 │   hardware encoder if available) ; audio → Opus            │
 │        ↓                                                   │
 │ GradeStream.exe — serves the stream to viewers             │
@@ -285,7 +304,7 @@ All settings are remembered between launches.
 
 | Parameter | Value |
 |---|---|
-| Output resolution | always 1920×1080 |
+| Output resolution | 1920×1080; 1080×1920 when the monitor is in portrait orientation |
 | Frame rate | 12, 24, 25, 30, 50, 60 |
 | Codec | H.264. Internet mode — High Profile; Wi-Fi and Both modes — Constrained Baseline (guaranteed to play over WebRTC on any phone) |
 | Bit depth and chroma | 8-bit, YCbCr 4:2:0 |

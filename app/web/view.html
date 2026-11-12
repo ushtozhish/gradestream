@@ -55,6 +55,9 @@
   #scBody { position:absolute; display:flex; flex-direction:column; gap:3px; }
   #scBody .row { display:flex; gap:3px; flex:1 1 0; min-height:0; }
   #scBody .pic { background:#000; min-width:0; }
+  /* выход за пределы: рамка скопа мигает красным */
+  #scBody canvas.alarm { outline:2px solid #ff3b3b; outline-offset:-2px; animation:alarm .9s ease-in-out infinite; }
+  @keyframes alarm { 50% { outline-color:rgba(255,59,59,.3); } }
   #scBody canvas { position:static; display:block; background:#000; flex:1 1 0; min-width:0; width:100%; height:100%; }
   body.scopes-on #c, body.scopes-on #lv { inset:auto; z-index:6; width:var(--picW); height:var(--picH); left:var(--picL); top:var(--picT);
                                           border:0; box-sizing:border-box; background:#000; }
@@ -71,10 +74,10 @@
 <div id="scopes">
   <div id="scHead">
     <button data-sc="wave">Waveform</button>
-    <button data-sc="parade" data-en="Parade">Парад</button>
-    <button data-sc="vector" data-en="Vectorscope">Вектороскоп</button>
-    <button data-sc="hist" data-en="Histogram">Гистограмма</button>
+    <button data-sc="parade">Parade</button>
+    <button data-sc="vector">Vectorscope</button>
     <span class="sp"></span>
+    <button class="tool" id="scColor" title="Цвет / ч/б" data-en-title="Color / mono"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
     <button class="tool" id="scBig"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="8" height="11"/><rect x="11" y="2.5" width="3.5" height="5"/><rect x="11" y="9" width="3.5" height="4.5"/></svg></button>
     <button class="tool" id="scClose" title="Закрыть скопы" data-en-title="Close scopes"><svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
   </div>
@@ -83,7 +86,7 @@
 <div id="bar">
   <button id="btnSound" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span class="t" data-en="Sound">Звук</span></button>
   <button id="btnMark" class="tile"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span class="t" data-en="Mark">Метка</span></button>
-  <button id="btnScopes" class="tile" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l4-5 3 3 4-6 3 4 4-2"/></svg><span class="t" data-en="Scopes">Скопы</span></button>
+  <button id="btnScopes" class="tile" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l4-5 3 3 4-6 3 4 4-2"/></svg><span class="t">Scopes</span></button>
   <button id="btnFull" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t" data-en="Full">Экран</span></button>
   <button id="btnInfo" class="tile"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg><span class="t" data-en="Info">Инфо</span></button>
   <button id="btnHide" class="tile"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="t" data-en="Hide">Скрыть</span></button>
@@ -101,7 +104,16 @@ const LAN = __LAN__;   // открыто по ссылке внутри сети
 const $ = id => document.getElementById(id);
 const canvas = $('c');
 const ctx = canvas.getContext('2d', { alpha: false });
-ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1920, 1080);
+// Размер кадра приходит с потоком: 1920×1080 или 1080×1920 (монитор в книжной ориентации)
+let PW = 1920, PH = 1080;
+const picSize = () => LAN && lv.videoWidth ? [lv.videoWidth, lv.videoHeight] : [PW, PH];
+function setPicSize(w, h) {
+  if (!w || !h || (w === PW && h === PH)) return;
+  PW = w; PH = h; canvas.width = w; canvas.height = h;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+  if (typeof Scopes !== 'undefined') Scopes.relayout();
+}
+ctx.fillStyle = '#000'; ctx.fillRect(0, 0, PW, PH);
 
 let shownTs = 0;
 let ws = null, decoder = null, cfg = null, waitKey = true, live = false;
@@ -157,7 +169,7 @@ function onText(m) {
   else if (m.t === 'live') {
     live = m.on;
     if (LAN) { $('lv').style.visibility = live ? 'visible' : 'hidden'; if (live) { $('lv').play().catch(() => {}); if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…')); } }
-    if (!live) { if (!LAN) onAudioConfig({ on: false }); status(L('Трансляция остановлена', 'The stream has stopped')); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 1920, 1080); }
+    if (!live) { if (!LAN) onAudioConfig({ on: false }); status(L('Трансляция остановлена', 'The stream has stopped')); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, PW, PH); }
   }
   else if (m.t === 'pause') $('pause').style.display = m.on ? 'block' : 'none';
 }
@@ -211,7 +223,7 @@ async function onRtcOffer(m) {
   } catch (e) { status(L('Ошибка соединения: ', 'Connection error: ') + e.message); }
 }
 lv.addEventListener('playing', () => { if (live) { gotFrame = true; status(''); } });
-lv.addEventListener('resize', () => { if (live && lv.videoWidth) { gotFrame = true; status(''); } });
+lv.addEventListener('resize', () => { if (live && lv.videoWidth) { gotFrame = true; status(''); } if (typeof Scopes !== 'undefined') Scopes.relayout(); });
 // Задержка показа у телефона — чтобы скриншот метки был именно того кадра, который здесь виден
 setInterval(async () => {
   if (!LAN || !pc) return;
@@ -241,6 +253,7 @@ async function setupDecoder(m) {
     if (!s.supported) { delete c.colorSpace; const s2 = await VideoDecoder.isConfigSupported(c); if (!s2.supported) { status(L('Устройство не может декодировать это видео (H.264 ', 'This device cannot decode this video (H.264 ') + m.codec + ').'); return; } }
   } catch {}
   cfg = c;
+  setPicSize(m.w, m.h);
   resetDecoder();
   if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…'));
 }
@@ -292,7 +305,7 @@ function queueFrame(f) {
   }).catch(() => { try { f.close(); } catch {} });
 }
 function showBitmap(item) {
-  ctx.drawImage(item.bmp, 0, 0, 1920, 1080);
+  ctx.drawImage(item.bmp, 0, 0, PW, PH);
   shownTs = item.ts; item.bmp.close(); frames++; Scopes.dirty = true;
   if (window.__avProbe) window.__avProbe('v', item.ts, performance.now());
   if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
@@ -321,10 +334,10 @@ function resetDecoder() {
   decoder = new VideoDecoder({
     output: f => {
       if (syncOn()) { queueFrame(f); return; }
-      ctx.drawImage(f, 0, 0, 1920, 1080);
+      ctx.drawImage(f, 0, 0, PW, PH);
       shownTs = f.timestamp;   // какой кадр сейчас на экране — для скриншота метки
       f.close();
-      frames++;
+      frames++; Scopes.dirty = true;
       if (window.__avProbe) window.__avProbe('v', shownTs, performance.now());
       if (!gotFrame) { gotFrame = true; status(''); ensureFsVideo(); }
     },
@@ -477,8 +490,8 @@ $('btnMark').onclick = e => {
 function onTap(e) {
   if (!markMode) { $('bar').classList.toggle('hidden'); return; }
   const r = (LAN ? lv : canvas).getBoundingClientRect();
-  const scale = Math.min(r.width / 1920, r.height / 1080);
-  const dw = 1920 * scale, dh = 1080 * scale;
+  const [fw, fh] = picSize(), scale = Math.min(r.width / fw, r.height / fh);
+  const dw = fw * scale, dh = fh * scale;
   const ox = r.left + (r.width - dw) / 2, oy = r.top + (r.height - dh) / 2;
   const x = (e.clientX - ox) / dw, y = (e.clientY - oy) / dh;
   if (x < 0 || x > 1 || y < 0 || y > 1) return;
@@ -493,7 +506,7 @@ canvas.addEventListener('click', onTap);
 lv.addEventListener('click', onTap);
 
 
-// ---------- Скопы: waveform, RGB-парад, вектороскоп, гистограмма ----------
+// ---------- Скопы: waveform, RGB-парад, вектороскоп ----------
 // Считаются на телефоне по той картинке, которую клиент сейчас видит (уже после передачи),
 // до 10 раз в секунду (реже на слабом телефоне), по копии кадра 768×432. Шкала — как в Resolve: 0–1023.
 // Раскладка всегда раздельная: картинка уменьшается и сдвигается, скопы стоят рядом на тёмном фоне.
@@ -503,10 +516,10 @@ const Scopes = (() => {
   const sctx = src.getContext('2d', { willReadFrequently: true, alpha: false });
   const panel = $('scopes'), body = $('scBody');
   const KR = 0.2126, KG = 0.7152, KB = 0.0722;            // Rec.709
-  const ORDER = ['wave', 'parade', 'vector', 'hist'];
-  const ASPECT = { wave: 2, parade: 2, vector: 1, hist: 2.4 };
-  let st = { on: { wave: true, parade: false, vector: true, hist: false }, open: false, big: false };
-  try { const o = JSON.parse(localStorage.getItem('gs.view.scopes') || '{}'); if (o.on) st.on = Object.assign(st.on, o.on); st.open = !!o.open; st.big = !!o.big; } catch {}
+  const ORDER = ['wave', 'parade', 'vector'];
+  const ASPECT = { wave: 2, parade: 2, vector: 1 };
+  let st = { on: { wave: true, parade: false, vector: true }, open: false, big: false, color: true };
+  try { const o = JSON.parse(localStorage.getItem('gs.view.scopes') || '{}'); if (o.on) for (const k of ORDER) if (k in o.on) st.on[k] = !!o.on[k]; st.open = !!o.open; st.big = !!o.big; st.color = o.color !== false; } catch {}
   const save = () => { try { localStorage.setItem('gs.view.scopes', JSON.stringify(st)); } catch {} };
   let allowed = false, lastT = 0, lastLvTime = -1, dirty = true, cost = 20;
   const views = {};
@@ -525,7 +538,7 @@ const Scopes = (() => {
     const W = Math.max(40, Math.round(v.cv.clientWidth * dpr)), H = Math.max(20, Math.round(v.cv.clientHeight * dpr));
     if (v.cv.width !== W || v.cv.height !== H) { v.cv.width = W; v.cv.height = H; }
     const wave = v.kind === 'wave' || v.kind === 'parade';
-    v.dpr = dpr; v.gx = wave ? Math.round(30 * dpr) : 0; v.pad = wave ? Math.round(9 * dpr) : v.kind === 'hist' ? Math.round(14 * dpr) : 0;
+    v.dpr = dpr; v.gx = wave ? Math.round(30 * dpr) : 0; v.pad = wave ? Math.round(9 * dpr) : 0;
     let w, h;
     if (v.kind === 'vector') { w = h = Math.min(W, H, 900) - Math.round(4 * dpr); }
     // по высоте не больше ~320 строк: выборка 432 строки, выше след становится редким — дальше плавное растяжение, как в Resolve
@@ -542,43 +555,51 @@ const Scopes = (() => {
     for (const b of panel.querySelectorAll('[data-sc]')) b.classList.toggle('on', !!st.on[b.dataset.sc]);
     $('scBig').title = st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes');
     $('scBig').classList.toggle('on', st.big);
+    $('scColor').classList.toggle('on', st.color);
     const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 6;
     const bottom = bar.classList.contains('hidden') ? 6 : bar.getBoundingClientRect().height + 14;
     const H = window.innerHeight - top - bottom, land = W > H * 1.15, m = 6, gap = 3;
-    const bs = document.body.style, setPic = (l, t, w, h) => { bs.setProperty('--picL', l + 'px'); bs.setProperty('--picT', t + 'px'); bs.setProperty('--picW', w + 'px'); bs.setProperty('--picH', (h || w * 9 / 16) + 'px'); };
-    let ax = m, ay = top, aw = W - 2 * m, ah = H, items = list.slice();
+    const [fw, fh] = picSize(), A = fw / fh;                // пропорции картинки: 16:9 или 9:16
+    const bs = document.body.style, setPic = (l, t, w, h) => { bs.setProperty('--picL', l + 'px'); bs.setProperty('--picT', t + 'px'); bs.setProperty('--picW', w + 'px'); bs.setProperty('--picH', (h || w / A) + 'px'); };
+    let ax = m, ay = top, aw = W - 2 * m, ah = H, fixed = null;
     if (!st.big) {
-      // «Картинка крупно»: картинка ~2/3 ширины (сверху во всю ширину, если телефон вертикально), скопы рядом
+      // «Картинка крупно»: горизонтально картинка слева (до ~2/3 ширины, во всю высоту), скопы справа;
+      // вертикально — картинка сверху во всю ширину (не выше ~55% экрана), скопы под ней
       if (land) {
-        const picW = Math.min((W - 3 * m) * 0.64, H * 16 / 9);
+        const picW = Math.min((W - 3 * m) * 0.64, H * A);
         setPic(m, top, picW, H);                             // колонка во всю высоту, картинка по центру на чёрном
         ax = m + picW + gap; aw = W - picW - m - gap - m;
       } else {
-        const picW = W - 2 * m; setPic(m, top, picW);
-        ay = top + picW * 9 / 16 + gap; ah = H - picW * 9 / 16 - gap;
+        const picW = W - 2 * m, ph = Math.min(picW / A, H * 0.55); setPic(m, top, picW, ph);
+        ay = top + ph + gap; ah = H - ph - gap;
       }
-    } else if (!land) {
-      // вертикально: картинка — полоса во всю ширину сверху (~18% высоты), скопы под ней
-      const ph = Math.min(H * 0.18, (W - 2 * m) * 9 / 16);
+    } else if (!land && A >= 1) {
+      // вертикальный телефон, горизонтальный кадр: картинка — полоса во всю ширину сверху (~18% высоты)
+      const ph = Math.min(H * 0.18, (W - 2 * m) / A);
       setPic(m, top, W - 2 * m, ph);
       ay = top + ph + gap; ah = H - ph - gap;
-    } else items = null;                                    // горизонтально: картинка — одна из ячеек сетки (меньше остальных)
+    } else if (!land) {
+      // вертикальный телефон, вертикальный кадр: картинка слева сверху рядом с одним скопом, остальные — полосами ниже
+      const rest = list.slice(), side = rest.includes('vector') ? 'vector' : rest[0];
+      rest.splice(rest.indexOf(side), 1);
+      fixed = [side ? ['pic', side] : ['pic'], ...rest.map(k => [k])];
+    }
     Object.assign(body.style, { left: ax + 'px', top: ay + 'px', width: aw + 'px', height: ah + 'px' });
     // Ячейки заполняют всю область без пустот. Перебираем число столбцов и берём раскладку, где скопам
     // достаётся самая полезная площадь (waveform хорош от 1,2:1 до 3,5:1, вектороскоп — квадрат)
-    const GROW = { pic: 0.62 };
+    const GROW = { pic: !land && A < 1 ? 0.55 : A >= 1 ? 0.62 : 0.34 };
     const useful = (k, cw, ch) => k === 'pic' ? 0 : k === 'vector' ? Math.min(cw, ch) ** 2 : Math.min(cw, ch * 3.5) * Math.min(ch, cw / 1.2);
     const big = st.big && land;
     const arrange = cols => { const it = !big ? list : (() => { const a = list.slice(); a.splice(Math.min(cols - 1, a.length), 0, 'pic'); return a; })();
       const rows = []; for (let i = 0; i < it.length; i += cols) rows.push(it.slice(i, i + cols)); return rows; };
-    let best = null;
-    for (let cols = 1; cols <= list.length + 1; cols++) {
+    let best = fixed ? { rows: fixed } : null;
+    if (!fixed) for (let cols = 1; cols <= list.length + 1; cols++) {
       const rows = arrange(cols), ch = (ah - gap * (rows.length - 1)) / rows.length;
       let score = 0, picOk = true;
       for (const row of rows) {
         const tot = row.reduce((a, k) => a + (GROW[k] || 1), 0), free = aw - gap * (row.length - 1);
         for (const k of row) { const cw = free * (GROW[k] || 1) / tot; score += useful(k, cw, ch);
-          if (k === 'pic' && Math.min(cw, ch * 16 / 9) < Math.min(W, H * 16 / 9) * 0.22) picOk = false; }   // картинка не меньше ~1/4 экрана
+          if (k === 'pic') { const pw = Math.min(cw, ch * A); if (pw * pw / A < W * H * 0.05) picOk = false; } }   // картинка не меньше ~5% экрана
       }
       if (!picOk) score *= 0.3;
       if (!best || score > best.score) best = { score, rows };
@@ -618,31 +639,39 @@ const Scopes = (() => {
   }
   // Яркость следа — логарифм плотности, как у Resolve: видны и редкие пиксели, плотные области не сливаются в заливку
   const glow = (d, ref) => d > 0 ? Math.min(255, 255 * Math.log1p(d) / Math.log1p(ref)) : 0;
+  // Waveform и парад. Цвет: waveform окрашен средним цветом пикселей в точке (как Colorize в Resolve), парад — R/G/B.
+  // Ч/б: весь след белый.
   function waveform(px, v, parade) {
-    const { w, h, img } = v, d = img.data, n = w * h;
-    const r = new Float32Array(n), g = parade ? new Float32Array(n) : null, b = parade ? new Float32Array(n) : null;
+    const { w, h, img } = v, d = img.data, n = w * h, color = st.color;
+    const cnt = [new Float32Array(n), parade ? new Float32Array(n) : null, parade ? new Float32Array(n) : null];
+    const sum = !parade && color ? [new Float32Array(n), new Float32Array(n), new Float32Array(n)] : null;
     const gap = parade ? Math.max(3, Math.round(w / 90)) : 0, pw = parade ? Math.floor((w - 2 * gap) / 3) : w;
     const colOf = new Int32Array(SW), colW = new Float32Array(pw);
     for (let x = 0; x < SW; x++) { colOf[x] = Math.floor(x * pw / SW); colW[colOf[x]]++; }
     for (let c = 0; c < pw; c++) colW[c] = 1 / colW[c];
-    const ky = (h - 1) / 255;
+    const ky = (h - 1) / 255, o2 = pw + gap, o3 = 2 * (pw + gap);
     let jx = 0;
-    // c — столбец внутри своей панели, off — сдвиг панели (для парада)
-    const put = (arr, val, c, off) => { const y = Math.round((255 - val + JIT[jx++ & 8191]) * ky); if (y >= 0 && y < h) arr[y * w + c + off] += colW[c]; };
-    const o2 = pw + gap, o3 = 2 * (pw + gap);
+    const at = (val, c, off) => { const y = Math.round((255 - val + JIT[jx++ & 8191]) * ky); return y >= 0 && y < h ? y * w + c + off : -1; };
     for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) {
-      const i = (y * SW + x) * 4, R = px[i], G = px[i + 1], B = px[i + 2], c = colOf[x];
-      if (parade) { put(r, R, c, 0); put(g, G, c, o2); put(b, B, c, o3); }
-      else put(r, KR * R + KG * G + KB * B, c, 0);
+      const i = (y * SW + x) * 4, R = px[i], G = px[i + 1], B = px[i + 2], c = colOf[x], wt = colW[c];
+      if (parade) { let q = at(R, c, 0); if (q >= 0) cnt[0][q] += wt; q = at(G, c, o2); if (q >= 0) cnt[1][q] += wt; q = at(B, c, o3); if (q >= 0) cnt[2][q] += wt; }
+      else { const q = at(KR * R + KG * G + KB * B, c, 0); if (q >= 0) { cnt[0][q] += wt; if (sum) { sum[0][q] += R * wt; sum[1][q] += G * wt; sum[2][q] += B * wt; } } }
     }
     v.pw = pw; v.gap = gap;
     const ref = SH * 0.3 / Math.max(1, h / 256);           // плоская область на одном уровне ≈ полная яркость
     for (let i = 0, j = 0; i < n; i++, j += 4) {
-      if (!parade) { const a = glow(r[i], ref); d[j] = a * 0.93; d[j + 1] = a * 0.96; d[j + 2] = a; }
-      else { d[j] = glow(r[i], ref); d[j + 1] = glow(g[i], ref) * 0.9; d[j + 2] = glow(b[i], ref); }
-      d[j + 3] = 255;
+      let R = 0, G = 0, B = 0;
+      if (!parade) {
+        const a = glow(cnt[0][i], ref);
+        if (a && sum) {                                     // средний цвет пикселей, приведённый к полной яркости
+          const r = sum[0][i], g = sum[1][i], b = sum[2][i], mx = Math.max(r, g, b) || 1;
+          R = a * (0.25 + 0.75 * r / mx); G = a * (0.25 + 0.75 * g / mx); B = a * (0.25 + 0.75 * b / mx);
+        } else { R = a * 0.93; G = a * 0.96; B = a; }
+      } else if (color) { R = glow(cnt[0][i], ref); G = glow(cnt[1][i], ref) * 0.9; B = glow(cnt[2][i], ref); }
+      else { const a = glow(cnt[0][i] + cnt[1][i] + cnt[2][i], ref); R = a * 0.93; G = a * 0.96; B = a; }
+      d[j] = R; d[j + 1] = G; d[j + 2] = B; d[j + 3] = 255;
     }
-    if (parade) for (let i = 0, j = 0; i < n; i++, j += 4) {    // чуть мягче чистых R/G/B, как в Resolve
+    if (parade && color) for (let i = 0, j = 0; i < n; i++, j += 4) {   // чуть мягче чистых R/G/B, как в Resolve
       const R = d[j], G = d[j + 1], B = d[j + 2]; if (!(R | G | B)) continue;
       d[j] = Math.min(255, R + G * .18 + B * .22); d[j + 1] = Math.min(255, G + R * .12 + B * .2); d[j + 2] = Math.min(255, B + R * .12 + G * .12);
     }
@@ -651,34 +680,26 @@ const Scopes = (() => {
   // Цветоразностные Cb/Cr по Rec.709, в долях от полного размаха (±0,5)
   const cbcr = (R, G, B) => { const Y = KR * R + KG * G + KB * B; return [(B - Y) / 1.8556 / 255, (R - Y) / 1.5748 / 255]; };
   function vectorscope(px, v) {
-    const { img, w } = v, d = img.data, N = w * w, n = new Float32Array(N);
+    const { img, w } = v, d = img.data, N = w * w, n = new Float32Array(N), color = st.color;
+    const sr = color ? new Float32Array(N) : null, sg = color ? new Float32Array(N) : null, sb = color ? new Float32Array(N) : null;
     const c0 = w / 2, k = 2 * (118 / 256 * w);              // радиус круга = Cb/Cr 0,5
     let jx = 0;
     for (let i = 0; i < SW * SH * 4; i += 4) {
       const R = px[i] + JIT[jx++ & 8191], G = px[i + 1] + JIT[jx++ & 8191], B = px[i + 2] + JIT[jx++ & 8191];
       const [cb, cr] = cbcr(R, G, B);
       const x = Math.round(c0 + cb * k), y = Math.round(c0 - cr * k);
-      if (x >= 0 && x < w && y >= 0 && y < w) n[y * w + x]++;
+      if (x >= 0 && x < w && y >= 0 && y < w) { const q = y * w + x; n[q]++; if (color) { sr[q] += R; sg[q] += G; sb[q] += B; } }
     }
     const ref = 900 * (256 / w) * (256 / w);
-    for (let q = 0, j = 0; q < N; q++, j += 4) { const a = glow(n[q], ref); d[j] = a * 0.93; d[j + 1] = a * 0.96; d[j + 2] = a; d[j + 3] = 255; }
-    v.dctx.putImageData(img, 0, 0);
-  }
-  function histogram(px, v) {
-    const { w, h, img } = v, d = img.data;
-    const hs = [new Float32Array(256), new Float32Array(256), new Float32Array(256)];
-    for (let i = 0; i < SW * SH * 4; i += 4) { hs[0][px[i]]++; hs[1][px[i + 1]]++; hs[2][px[i + 2]]++; }
-    let mx = 1; for (const hh of hs) for (let i = 1; i < 255; i++) mx = Math.max(mx, hh[i]);
-    d.fill(0); for (let j = 3; j < d.length; j += 4) d[j] = 255;
-    const tops = hs.map(hh => { const t = new Float32Array(w); for (let x = 0; x < w; x++) { const q0 = Math.floor(x * 256 / w), q1 = Math.max(q0 + 1, Math.floor((x + 1) * 256 / w)); let m = 0; for (let q = q0; q < q1; q++) m = Math.max(m, hh[q]); t[x] = h - Math.min(h, m / mx * h * 0.95); } return t; });
-    for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
-      const j = (y * w + x) * 4; let R = 0, G = 0, B = 0;
-      if (y >= tops[0][x]) R = 150; if (y >= tops[1][x]) G = 150; if (y >= tops[2][x]) B = 150;
-      d[j] = R; d[j + 1] = G; d[j + 2] = B;
+    for (let q = 0, j = 0; q < N; q++, j += 4) {
+      const a = glow(n[q], ref);
+      if (a && color) { const r = sr[q], g = sg[q], b = sb[q], mx = Math.max(r, g, b) || 1;
+        d[j] = a * (0.3 + 0.7 * r / mx); d[j + 1] = a * (0.3 + 0.7 * g / mx); d[j + 2] = a * (0.3 + 0.7 * b / mx); }
+      else { d[j] = a * 0.93; d[j + 1] = a * 0.96; d[j + 2] = a; }
+      d[j + 3] = 255;
     }
     v.dctx.putImageData(img, 0, 0);
   }
-
   // ---- вывод с сеткой в духе Resolve: тонкие серые линии, шкала 0–1023 через 128 ----
   const GRID = 'rgba(255,255,255,.14)', GRID_MAIN = 'rgba(255,255,255,.26)', TXT = 'rgba(255,255,255,.6)';
   function label(c, t, x, y, dpr, align, color) { c.font = `${9 * dpr}px -apple-system, "Segoe UI", Roboto, sans-serif`; c.fillStyle = color || TXT; c.textAlign = align || 'left'; c.textBaseline = 'middle'; c.fillText(t, x, y); }
@@ -737,12 +758,39 @@ const Scopes = (() => {
       label(c, t, Math.min(W - 8 * dpr, Math.max(8 * dpr, lx)), Math.min(H - 7 * dpr, Math.max(7 * dpr, ly)), dpr, 'center');
     }
   }
-  function gridHist(v) {
-    const c = draw(v), W = v.cv.width, dpr = v.dpr, pad = v.pad, ox = Math.round((W - v.w) / 2);
-    c.drawImage(v.data, ox, pad);
-    c.lineWidth = 1;
-    for (let lv10 = 0; lv10 <= 1024; lv10 += 128) { const val = Math.min(1023, lv10), x = crisp(ox + val / 1023 * (v.w - 1)); c.strokeStyle = val === 0 || val === 1023 ? GRID_MAIN : GRID; c.beginPath(); c.moveTo(x, pad); c.lineTo(x, pad + v.h); c.stroke(); }
-    label(c, '0', ox, pad / 2, dpr); label(c, '512', ox + v.w / 2, pad / 2, dpr, 'center'); label(c, '1023', ox + v.w, pad / 2, dpr, 'right');
+  // ---- Выход за пределы ----
+  // Уровни: заметная доля кадра (больше 0,3%) упирается в 0 или в 1023 — по яркости (Waveform) или по любому каналу (Parade).
+  // Насыщенность: цвет за внешним кругом вектороскопа (больше 100%). Сплошь чёрные строки и столбцы (кашетирование) не считаются.
+  const alarmUntil = {}, flags = { wave: [], parade: [], vector: [] };
+  function excursions(px) {
+    const rowDark = new Uint8Array(SH), colMax = new Uint8Array(SW);
+    for (let y = 0; y < SH; y++) { let mx = 0;
+      for (let x = 0, i = y * SW * 4; x < SW; x++, i += 4) { const v = Math.max(px[i], px[i + 1], px[i + 2]); if (v > mx) mx = v; if (v > colMax[x]) colMax[x] = v; }
+      rowDark[y] = mx <= 4 ? 1 : 0; }
+    // край полосы после сжатия размыт — исключаем и по 3 соседние строки/столбца
+    const rowSkip = new Uint8Array(SH), colSkip = new Uint8Array(SW);
+    for (let y = 0; y < SH; y++) if (rowDark[y]) for (let k = -3; k <= 3; k++) if (y + k >= 0 && y + k < SH) rowSkip[y + k] = 1;
+    for (let x = 0; x < SW; x++) if (colMax[x] <= 4) for (let k = -3; k <= 3; k++) if (x + k >= 0 && x + k < SW) colSkip[x + k] = 1;
+    let n = 0, lo = 0, hi = 0, clo = 0, chi = 0, sat = 0;
+    for (let y = 0; y < SH; y++) { if (rowSkip[y]) continue;
+      for (let x = 0, i = y * SW * 4; x < SW; x++, i += 4) {
+        if (colSkip[x]) continue;
+        const R = px[i], G = px[i + 1], B = px[i + 2]; n++;
+        const Y = KR * R + KG * G + KB * B;
+        if (Y < 0.5) lo++; else if (Y > 254.5) hi++;
+        if (R === 0 || G === 0 || B === 0) clo++; if (R === 255 || G === 255 || B === 255) chi++;
+        const cb = (B - Y) / 1.8556 / 255, cr = (R - Y) / 1.5748 / 255; if (cb * cb + cr * cr > 0.25) sat++;
+      } }
+    const lim = Math.max(1, n * 0.003);
+    return { lo: lo > lim, hi: hi > lim, clo: clo > lim, chi: chi > lim, sat: sat > lim };
+  }
+  function alarmMark(v, list) {
+    const c = v.cv.getContext('2d'), dpr = v.dpr || 1, W = v.cv.width;
+    c.font = `600 ${9.5 * dpr}px -apple-system, "Segoe UI", Roboto, sans-serif`; c.textAlign = 'right'; c.textBaseline = 'top';
+    const t = list.join('  '), tw = c.measureText(t).width;
+    const y = v.cv.height - 20 * dpr;                       // внизу справа: там не мешает подписям шкалы и R/G/B
+    c.fillStyle = 'rgba(0,0,0,.8)'; c.fillRect(W - tw - 14 * dpr, y - 2 * dpr, tw + 10 * dpr, 14 * dpr);
+    c.fillStyle = '#ff4a4a'; c.fillText(t, W - 9 * dpr, y);
   }
 
   function frame() {
@@ -751,11 +799,18 @@ const Scopes = (() => {
     // до 10 обновлений в секунду; если телефон считает медленно — реже, чтобы не грелся и не мешал видео
     const now = performance.now(); if (now - lastT < Math.max(95, cost * 4)) return;
     const px = grab(); if (!px) return; lastT = now;
+    const ex = excursions(px), tNow = performance.now();
+    for (const k of ['lo', 'hi', 'clo', 'chi', 'sat']) if (ex[k]) alarmUntil[k] = tNow + 1000;   // держим 1 с, чтобы не мигало от кадра к кадру
+    const on = k => alarmUntil[k] > tNow;
+    flags.wave = [on('hi') && '▲ 1023', on('lo') && '▼ 0'].filter(Boolean);
+    flags.parade = [on('chi') && '▲ 1023', on('clo') && '▼ 0'].filter(Boolean);
+    flags.vector = on('sat') ? ['SAT > 100%'] : [];
     if (st.on.wave && views.wave) { waveform(px, fit(views.wave), false); gridWave(views.wave, false); }
     if (st.on.parade && views.parade) { waveform(px, fit(views.parade), true); gridWave(views.parade, true); }
     if (st.on.vector && views.vector) { vectorscope(px, fit(views.vector)); gridVector(views.vector); }
-    if (st.on.hist && views.hist) { histogram(px, fit(views.hist)); gridHist(views.hist); }
-    cost = cost * 0.7 + (performance.now() - now) * 0.3;
+    for (const k of ORDER) if (views[k]) { views[k].cv.classList.toggle('alarm', st.on[k] && flags[k].length > 0); if (st.on[k] && flags[k].length) alarmMark(views[k], flags[k]); }
+    window.__scopeFlags = flags;
+    cost = cost * 0.7 + (performance.now() - now) * 0.3; window.__scopeCost = cost;
   }
   requestAnimationFrame(frame);
 
@@ -767,11 +822,13 @@ const Scopes = (() => {
     save(); layout();
   };
   $('scBig').onclick = () => { st.big = !st.big; save(); layout(); };
+  $('scColor').onclick = () => { st.color = !st.color; save(); layout(); };
   $('scClose').onclick = () => show(false);
   window.addEventListener('resize', () => { if (st.open) layout(); });
   $('btnScopes').onclick = e => { e.stopPropagation(); show(!st.open); };
 
   return {
+    relayout() { if (st.open) layout(); },
     set dirty(v) { dirty = v; },
     allow(on) {
       allowed = on;
@@ -827,7 +884,7 @@ document.addEventListener('fullscreenchange', () => { $('btnFull').querySelector
 setInterval(() => {
   $('info').textContent = LAN
     ? L(`Wi-Fi напрямую · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} к/с · ${rxMbps.toFixed(1)} Мбит/с · задержка ~${lagMs} мс`, `Wi-Fi direct · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} fps · ${rxMbps.toFixed(1)} Mbit/s · latency ~${lagMs} ms`)
-    : L(`1920×1080 · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`, `1920×1080 · ${frames} fps · ${(bytes * 8 / 1e6).toFixed(1)} Mbit/s`);
+    : L(`${PW}×${PH} · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`, `${PW}×${PH} · ${frames} fps · ${(bytes * 8 / 1e6).toFixed(1)} Mbit/s`);
   frames = 0; bytes = 0;
 }, 1000);
 
