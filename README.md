@@ -167,11 +167,26 @@ The client gets one row of small tiles; a tile that is on turns orange. Tap the 
 | **Speaker** | sound on / off (shown only when you stream audio) |
 | **Pin** | marker mode: tap the frame, type a comment in the line that appears above the tiles, **Send** — it reaches you instantly. The moment of the frame is taken when the client taps, not when they finish typing. |
 | **Scope** | Waveform, Parade, Vectorscope — [see below](#8-scopes-for-the-client) (shown when you allow it) |
-| **Frame corners** | full screen. On Android, iPad and computers the page goes full screen; on iPhone (Safari doesn't let a page go full screen) the picture fills the page and a swipe up hides Safari's bars. In both, a tap on the picture brings the tiles back — markers, scopes and sound work in full screen; the tile turns orange while full screen is on, tap it again to leave. |
+| **Frame corners** | full screen; a tap on the picture brings the tiles back, so markers, scopes and sound work in full screen. The tile turns orange while full screen is on — tap it again to leave. **On iPhone, open the link in Safari** — see [Full screen on iPhone](#full-screen-on-iphone) below. |
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
 | **Arrow down** | hides the tiles |
 
 The page follows the language of the client's phone (English or Russian). With the internet link it also keeps the phone screen from dimming.
+
+#### Full screen on iPhone
+
+Apple doesn't let a web page go full screen on iPhone — only a video can, and nothing can be drawn over a full-screen video (no tiles, no markers, no scopes). The one way to get a true full screen **with** the tiles is Safari with its Fullscreen API switched on:
+
+1. On the iPhone: **Settings → Apps → Safari → Advanced → Feature Flags → Fullscreen API** — switch it on (once).
+2. Open the GradeStream link **in Safari**. If the link was tapped in WhatsApp or Telegram, it opens in their built-in browser — use **Open in Safari** from its menu.
+3. Tap the **Frame corners** tile: the page fills the whole screen without the address bar; tap the picture for the tiles.
+
+| Browser on iPhone | What the full-screen tile does |
+|---|---|
+| Safari, Fullscreen API on | true full screen, tiles, markers and scopes work |
+| Safari without the flag, Chrome, Firefox, Edge, built-in browsers of messengers | the picture fills the page and the tiles hide, markers and scopes work, but the browser's address bar stays |
+
+Chrome, Firefox and Edge on iPhone run on Apple's engine and don't see Safari's settings, so they can't go full screen with the tiles at all. Android, iPad and computers need nothing — the page goes full screen in any modern browser.
 
 ### 8. Scopes for the client
 
