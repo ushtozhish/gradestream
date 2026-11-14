@@ -80,9 +80,9 @@
 <body>
 <canvas id="c" width="1920" height="1080"></canvas>
 <video id="lv" muted autoplay playsinline disablepictureinpicture></video>
-<div id="status" data-en="Connecting…">Подключаюсь…</div>
-<div id="hint" data-en="Tap a spot on the frame">Коснитесь места на кадре</div>
-<div id="pause" data-en="Paused">Пауза</div>
+<div id="status" data-en="Connecting…" data-kk="Қосылуда…">Подключаюсь…</div>
+<div id="hint" data-en="Tap a spot on the frame" data-kk="Кадрдағы нүктені түртіңіз">Коснитесь места на кадре</div>
+<div id="pause" data-en="Paused" data-kk="Кідіртілді">Пауза</div>
 <div id="info"></div>
 <div id="note"></div>
 <div id="scopes">
@@ -91,35 +91,40 @@
     <button data-sc="parade">Parade</button>
     <button data-sc="vector">Vectorscope</button>
     <span class="sp"></span>
-    <button class="tool txt" id="scColor" title="Режим цвета скопов" data-en-title="Scope color mode">Colorize</button>
+    <button class="tool txt" id="scColor" title="Режим цвета скопов" data-en-title="Scope color mode" data-kk-title="Скоптардың түс режимі">Colorize</button>
     <button class="tool" id="scBig"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="8" height="11"/><rect x="11" y="2.5" width="3.5" height="5"/><rect x="11" y="9" width="3.5" height="4.5"/></svg></button>
-    <button class="tool" id="scClose" title="Закрыть скопы" data-en-title="Close scopes"><svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
+    <button class="tool" id="scClose" title="Закрыть скопы" data-en-title="Close scopes" data-kk-title="Скоптарды жабу"><svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
   </div>
   <div id="scBody"></div>
 </div>
 <div id="spacer"></div>
 <form id="cbox" autocomplete="off">
-  <input id="ctext" enterkeyhint="send" placeholder="Комментарий к точке (можно пусто)" data-en-ph="Comment for this point (optional)">
-  <button type="submit" id="csend" data-en="Send">Отправить</button>
-  <button type="button" id="ccancel" title="Отмена" data-en-title="Cancel">✕</button>
+  <input id="ctext" enterkeyhint="send" placeholder="Комментарий к точке (можно пусто)" data-en-ph="Comment for this point (optional)" data-kk-ph="Осы нүктеге пікір (міндетті емес)">
+  <button type="submit" id="csend" data-en="Send" data-kk="Жіберу">Отправить</button>
+  <button type="button" id="ccancel" title="Отмена" data-en-title="Cancel" data-kk-title="Болдырмау">✕</button>
 </form>
 <div id="bar">
-  <button id="btnSound" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span class="t" data-en="Sound">Звук</span></button>
-  <button id="btnMark" class="tile"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span class="t" data-en="Mark">Метка</span></button>
+  <button id="btnSound" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span class="t" data-en="Sound" data-kk="Дыбыс">Звук</span></button>
+  <button id="btnMark" class="tile"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span class="t" data-en="Mark" data-kk="Белгі">Метка</span></button>
   <button id="btnScopes" class="tile" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l4-5 3 3 4-6 3 4 4-2"/></svg><span class="t">Scopes</span></button>
-  <button id="btnFull" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t" data-en="Full">Экран</span></button>
-  <button id="btnInfo" class="tile"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg><span class="t" data-en="Info">Инфо</span></button>
-  <button id="btnHide" class="tile"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="t" data-en="Hide">Скрыть</span></button>
+  <button id="btnFull" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t" data-en="Full" data-kk="Экран">Экран</span></button>
+  <button id="btnInfo" class="tile"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg><span class="t" data-en="Info" data-kk="Ақпарат">Инфо</span></button>
+  <button id="btnHide" class="tile"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="t" data-en="Hide" data-kk="Жасыру">Скрыть</span></button>
 </div>
 
 <script>
 const ROOM = '__ROOM__';
 // Язык страницы — по языку телефона зрителя
-const LANG = ['ru', 'kk', 'be', 'uk'].includes((navigator.language || '').slice(0, 2)) ? 'ru' : 'en';
-const L = (ru, en) => LANG === 'en' ? en : ru;
+const LANG = { kk: 'kk', ru: 'ru' }[(navigator.language || '').slice(0, 2).toLowerCase()] || 'en';
+const L = (ru, en, kk) => LANG === 'en' ? en : LANG === 'kk' ? kk : ru;
 document.documentElement.lang = LANG;
-if (LANG === 'en') { document.querySelectorAll('[data-en-ph]').forEach(el => { el.placeholder = el.dataset.enPh; }); document.querySelectorAll('[data-en]').forEach(el => { el.textContent = el.dataset.en; }); document.querySelectorAll('[data-en-title]').forEach(el => { el.title = el.dataset.enTitle; }); }
-document.title = L('Просмотр цветокоррекции', 'Color grading preview');
+if (LANG !== 'ru') {
+  const g = (el, k) => el.dataset[LANG + k];
+  document.querySelectorAll('[data-en-ph]').forEach(el => { el.placeholder = g(el, 'Ph') ?? el.placeholder; });
+  document.querySelectorAll('[data-en]').forEach(el => { el.textContent = g(el, '') ?? el.textContent; });
+  document.querySelectorAll('[data-en-title]').forEach(el => { el.title = g(el, 'Title') ?? el.title; });
+}
+document.title = L('Просмотр цветокоррекции', 'Color grading preview', 'Түс түзетуді қарау');
 const LAN = __LAN__;   // открыто по ссылке внутри сети: видео приходит по WebRTC напрямую по Wi-Fi
 const $ = id => document.getElementById(id);
 const canvas = $('c');
@@ -145,10 +150,10 @@ function note(t) { $('note').textContent = t; $('note').style.display = 'block';
 if (LAN) {
   canvas.style.display = 'none';
   $('lv').style.display = 'block';
-  if (!('RTCPeerConnection' in window)) status(L('Этот браузер не умеет принимать видео по сети. Откройте ссылку в Safari (iPhone) или Chrome (Android).', 'This browser cannot receive video over the network. Open the link in Safari (iPhone) or Chrome (Android).'));
+  if (!('RTCPeerConnection' in window)) status(L('Этот браузер не умеет принимать видео по сети. Откройте ссылку в Safari (iPhone) или Chrome (Android).', 'This browser cannot receive video over the network. Open the link in Safari (iPhone) or Chrome (Android).', 'Бұл браузер бейнені желі арқылы қабылдай алмайды. Сілтемені Safari-де (iPhone) немесе Chrome-да (Android) ашыңыз.'));
   else connect();
 } else if (!('VideoDecoder' in window)) {
-  status(L('Этот браузер слишком старый для просмотра. На iPhone обновите iOS до 16.4 или новее и откройте ссылку в Safari. На Android — в Chrome.', 'This browser is too old. On iPhone, update to iOS 16.4 or later and open the link in Safari. On Android, use Chrome.'));
+  status(L('Этот браузер слишком старый для просмотра. На iPhone обновите iOS до 16.4 или новее и откройте ссылку в Safari. На Android — в Chrome.', 'This browser is too old. On iPhone, update to iOS 16.4 or later and open the link in Safari. On Android, use Chrome.', 'Бұл браузер тым ескі. iPhone-да iOS 16.4 немесе жаңарағына жаңартып, сілтемені Safari-де ашыңыз. Android-та Chrome-ды қолданыңыз.'));
 } else {
   connect();
 }
@@ -158,8 +163,8 @@ function connect() {
   ws.binaryType = 'arraybuffer';
   ws.onopen = () => { retry = 0; };
   ws.onclose = () => {
-    status(gotFrame ? '' : L('Нет связи, переподключаюсь…', 'No connection, reconnecting…'));
-    if (gotFrame) note(L('Связь прервалась, переподключаюсь…', 'Connection lost, reconnecting…'));
+    status(gotFrame ? '' : L('Нет связи, переподключаюсь…', 'No connection, reconnecting…', 'Байланыс жоқ, қайта қосылуда…'));
+    if (gotFrame) note(L('Связь прервалась, переподключаюсь…', 'Connection lost, reconnecting…', 'Байланыс үзілді, қайта қосылуда…'));
     setTimeout(connect, Math.min(5000, 500 * ++retry));
   };
   ws.onmessage = e => {
@@ -174,22 +179,22 @@ function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 function onText(m) {
   if (m.t === 'hello') {
-    live = m.live; if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…'));
+    live = m.live; if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…', 'Трансляция әлі басталған жоқ. Күте тұрыңыз…'));
     if (LAN) { startRTC(); return; }
     sendCaps();
     if (soundOn) send({ t: 'audio-want', on: true });
   }
   else if (m.t === 'rtc-offer') onRtcOffer(m);
   else if (m.t === 'rtc-ice') { if (pc && m.c) pc.addIceCandidate(m.c).catch(() => {}); }
-  else if (m.t === 'rtc-error') status(L('Не удалось начать показ: ', 'Could not start playback: ') + m.error);
+  else if (m.t === 'rtc-error') status(L('Не удалось начать показ: ', 'Could not start playback: ', 'Ойнатуды бастау мүмкін болмады: ') + m.error);
   else if (m.t === 'scopes') Scopes.allow(!!m.on);
   else if (m.t === 'playout') { playMode = m.mode === 'sync' ? 'sync' : 'live'; applyReceiverMode(); }
   else if (m.t === 'audio') { if (LAN) $('btnSound').style.display = m.on ? '' : 'none'; else onAudioConfig(m); }
   else if (m.t === 'config') { if (!LAN) setupDecoder(m); }
   else if (m.t === 'live') {
     live = m.on;
-    if (LAN) { $('lv').style.visibility = live ? 'visible' : 'hidden'; if (live) { $('lv').play().catch(() => {}); if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…')); } }
-    if (!live) { if (!LAN) onAudioConfig({ on: false }); status(L('Трансляция остановлена', 'The stream has stopped')); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, PW, PH); }
+    if (LAN) { $('lv').style.visibility = live ? 'visible' : 'hidden'; if (live) { $('lv').play().catch(() => {}); if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…', 'Сурет жүктелуде…')); } }
+    if (!live) { if (!LAN) onAudioConfig({ on: false }); status(L('Трансляция остановлена', 'The stream has stopped', 'Трансляция тоқтады')); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, PW, PH); }
   }
   else if (m.t === 'pause') $('pause').style.display = m.on ? 'block' : 'none';
 }
@@ -209,7 +214,7 @@ const lv = $('lv');
 function startRTC() {
   clearTimeout(rtcRetry);
   if (pc) { try { pc.close(); } catch {} pc = null; }
-  if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…')); else status(L('Соединяюсь по Wi-Fi…', 'Connecting over Wi-Fi…'));
+  if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…', 'Трансляция әлі басталған жоқ. Күте тұрыңыз…')); else status(L('Соединяюсь по Wi-Fi…', 'Connecting over Wi-Fi…', 'Wi-Fi арқылы қосылуда…'));
   send({ t: 'rtc-start' });
 }
 async function onRtcOffer(m) {
@@ -226,11 +231,11 @@ async function onRtcOffer(m) {
   p.onconnectionstatechange = () => {
     if (p !== pc) return;
     const st = p.connectionState;
-    if (st === 'connected') { if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…')); }
+    if (st === 'connected') { if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…', 'Трансляция әлі басталған жоқ. Күте тұрыңыз…')); }
     else if (st === 'failed') {
-      status(L('Не получилось соединиться по Wi-Fi. Проверьте, что телефон в той же сети, что и компьютер (не гостевая сеть), и что на компьютере GradeStream разрешён в брандмауэре. Пробую снова…', 'Could not connect over Wi-Fi. Make sure the phone is on the same network as the computer (not a guest network) and that GradeStream is allowed in the computer’s firewall. Retrying…'));
+      status(L('Не получилось соединиться по Wi-Fi. Проверьте, что телефон в той же сети, что и компьютер (не гостевая сеть), и что на компьютере GradeStream разрешён в брандмауэре. Пробую снова…', 'Could not connect over Wi-Fi. Make sure the phone is on the same network as the computer (not a guest network) and that GradeStream is allowed in the computer’s firewall. Retrying…', 'Wi-Fi арқылы қосылу мүмкін болмады. Телефон компьютермен бір желіде екенін (қонақ желісі емес) және компьютердің брандмауэрінде GradeStream-ге рұқсат берілгенін тексеріңіз. Қайта әрекет жасалуда…'));
       rtcRetry = setTimeout(startRTC, 4000);
-    } else if (st === 'disconnected') note(L('Связь по Wi-Fi прерывается…', 'The Wi-Fi connection is unstable…'));
+    } else if (st === 'disconnected') note(L('Связь по Wi-Fi прерывается…', 'The Wi-Fi connection is unstable…', 'Wi-Fi байланысы тұрақсыз…'));
   };
   try {
     await p.setRemoteDescription({ type: 'offer', sdp: m.sdp });
@@ -240,7 +245,7 @@ async function onRtcOffer(m) {
     if (opt) ans.sdp = ans.sdp.replace(new RegExp('(a=fmtp:' + opt + ' [^\\r\\n]*)'), (m0) => /stereo=1/.test(m0) ? m0 : m0 + ';stereo=1;sprop-stereo=1');
     await p.setLocalDescription(ans);
     send({ t: 'rtc-answer', sdp: p.localDescription.sdp });
-  } catch (e) { status(L('Ошибка соединения: ', 'Connection error: ') + e.message); }
+  } catch (e) { status(L('Ошибка соединения: ', 'Connection error: ', 'Байланыс қатесі: ') + e.message); }
 }
 lv.addEventListener('playing', () => { if (live) { gotFrame = true; status(''); } });
 lv.addEventListener('resize', () => { if (live && lv.videoWidth) { gotFrame = true; status(''); } if (typeof Scopes !== 'undefined') Scopes.relayout(); });
@@ -270,12 +275,12 @@ async function setupDecoder(m) {
   if (m.colorSpace) c.colorSpace = m.colorSpace;
   try {
     const s = await VideoDecoder.isConfigSupported(c);
-    if (!s.supported) { delete c.colorSpace; const s2 = await VideoDecoder.isConfigSupported(c); if (!s2.supported) { status(L('Устройство не может декодировать это видео (H.264 ', 'This device cannot decode this video (H.264 ') + m.codec + ').'); return; } }
+    if (!s.supported) { delete c.colorSpace; const s2 = await VideoDecoder.isConfigSupported(c); if (!s2.supported) { status(L('Устройство не может декодировать это видео (H.264 ', 'This device cannot decode this video (H.264 ', 'Бұл құрылғы осы бейнені декодтай алмайды (H.264 ') + m.codec + ').'); return; } }
   } catch {}
   cfg = c;
   setPicSize(m.w, m.h);
   resetDecoder();
-  if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…'));
+  if (!gotFrame) status(L('Загружаю картинку…', 'Loading the picture…', 'Сурет жүктелуде…'));
 }
 
 // ---------- Синхронная подача: звук вместе с картинкой, кадры ровно ----------
@@ -475,8 +480,8 @@ $('btnSound').onclick = async e => {
     soundOn = !soundOn;
     lv.muted = !soundOn;
     lv.play().catch(() => {});
-    if (soundOn) note(L('Звук включён. Если тихо — снимите iPhone с беззвучного режима', 'Sound is on. If you hear nothing, turn off silent mode on the iPhone'));
-    $('btnSound').querySelector('.t').textContent = soundOn ? L('Звук вкл', 'Sound on') : L('Звук', 'Sound');
+    if (soundOn) note(L('Звук включён. Если тихо — снимите iPhone с беззвучного режима', 'Sound is on. If you hear nothing, turn off silent mode on the iPhone', 'Дыбыс қосулы. Ештеңе естілмесе, iPhone-дағы дыбыссыз режимді өшіріңіз'));
+    $('btnSound').querySelector('.t').textContent = soundOn ? L('Звук вкл', 'Sound on', 'Дыбыс қосулы') : L('Звук', 'Sound', 'Дыбыс');
     $('btnSound').classList.toggle('on', soundOn);
     return;
   }
@@ -491,12 +496,12 @@ $('btnSound').onclick = async e => {
     if (opusOK === null) await sendCaps();
     if (opusOK) setupAudioDecoder();
     send({ t: 'audio-want', on: true });
-    note(L('Звук включён. Если тихо — снимите iPhone с беззвучного режима', 'Sound is on. If you hear nothing, turn off silent mode on the iPhone'));
+    note(L('Звук включён. Если тихо — снимите iPhone с беззвучного режима', 'Sound is on. If you hear nothing, turn off silent mode on the iPhone', 'Дыбыс қосулы. Ештеңе естілмесе, iPhone-дағы дыбыссыз режимді өшіріңіз'));
   } else {
     send({ t: 'audio-want', on: false });
     closeDecoder();
   }
-  $('btnSound').querySelector('.t').textContent = soundOn ? L('Звук вкл', 'Sound on') : L('Звук', 'Sound');
+  $('btnSound').querySelector('.t').textContent = soundOn ? L('Звук вкл', 'Sound on', 'Дыбыс қосулы') : L('Звук', 'Sound', 'Дыбыс');
   $('btnSound').classList.toggle('on', soundOn);
 };
 
@@ -526,7 +531,7 @@ function onTap(e) {
 let pendingMark = null;
 function closeComment(sendIt) {
   if (!pendingMark) return;
-  if (sendIt) { send(Object.assign(pendingMark.msg, { text: $('ctext').value })); note(L('Метка отправлена', 'Marker sent')); }
+  if (sendIt) { send(Object.assign(pendingMark.msg, { text: $('ctext').value })); note(L('Метка отправлена', 'Marker sent', 'Белгі жіберілді')); }
   const p = pendingMark.ping; p.classList.remove('hold'); setTimeout(() => p.remove(), 1600);
   pendingMark = null; $('cbox').classList.remove('show'); $('ctext').blur();
 }
@@ -584,7 +589,7 @@ const Scopes = (() => {
     const list = ORDER.filter(k => st.on[k]);
     for (const k of list) if (!views[k]) mk(k);
     for (const b of panel.querySelectorAll('[data-sc]')) b.classList.toggle('on', !!st.on[b.dataset.sc]);
-    $('scBig').title = st.big ? L('Картинка крупно', 'Big picture') : L('Скопы крупно', 'Big scopes');
+    $('scBig').title = st.big ? L('Картинка крупно', 'Big picture', 'Сурет ірі') : L('Скопы крупно', 'Big scopes', 'Скоптар ірі');
     $('scBig').classList.toggle('on', st.big);
     $('scColor').textContent = st.cmode;
     const bar = $('bar'), W = window.innerWidth, top = $('scHead').getBoundingClientRect().bottom + 6;
@@ -868,7 +873,7 @@ const Scopes = (() => {
     allow(on) {
       allowed = on;
       $('btnScopes').style.display = on ? '' : 'none';
-      if (!on) { if (st.open) note(L('Колорист выключил скопы', 'The colorist turned scopes off')); panel.classList.remove('show'); document.body.classList.remove('scopes-on'); $('btnScopes').classList.remove('on'); }
+      if (!on) { if (st.open) note(L('Колорист выключил скопы', 'The colorist turned scopes off', 'Колорист скоптарды өшірді')); panel.classList.remove('show'); document.body.classList.remove('scopes-on'); $('btnScopes').classList.remove('on'); }
       else if (st.open) show(true);
     },
   };
@@ -877,7 +882,7 @@ const Scopes = (() => {
 // ---------- Интерфейс ----------
 // Плитки — только иконки; подпись — во всплывающей подсказке и для экранного диктора
 for (const b of document.querySelectorAll('.tile')) { const t = b.querySelector('.t'); const sync = () => { b.title = t.textContent; b.setAttribute('aria-label', t.textContent); }; sync(); new MutationObserver(sync).observe(t, { childList: true, characterData: true, subtree: true }); }
-$('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons')); };
+$('btnHide').onclick = e => { e.stopPropagation(); $('bar').classList.add('hidden'); note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons', 'Батырмаларды қайтару үшін экранды түртіңіз')); };
 $('btnInfo').onclick = e => { e.stopPropagation(); const i = $('info'); i.style.display = i.style.display === 'block' ? 'none' : 'block'; };
 // ---------- Во весь экран ----------
 // Android, iPad, компьютер — полноэкранный режим страницы (системный).
@@ -886,11 +891,11 @@ $('btnInfo').onclick = e => { e.stopPropagation(); const i = $('info'); i.style.
 // по касанию (метки, скопы, звук — всё доступно), а свайп вверх сворачивает панели Safari.
 const fsEl = document.documentElement;
 const pageFS = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
-const fullLabel = on => $('btnFull').querySelector('.t').textContent = on ? L('Свернуть', 'Exit') : L('Экран', 'Full');
+const fullLabel = on => $('btnFull').querySelector('.t').textContent = on ? L('Свернуть', 'Exit', 'Шығу') : L('Экран', 'Full', 'Экран');
 function setImmersive(on) {
   fsEl.classList.toggle('immersive', on);
   $('btnFull').classList.toggle('on', on); fullLabel(on);
-  if (on) { $('bar').classList.add('hidden'); note(L('Коснитесь экрана — появятся кнопки. Проведите вверх, чтобы Safari спрятал свою панель', 'Tap the screen for the buttons. Swipe up to hide Safari’s bar')); }
+  if (on) { $('bar').classList.add('hidden'); note(L('Коснитесь экрана — появятся кнопки', 'Tap the screen for the buttons', 'Батырмалар үшін экранды түртіңіз')); }
   else window.scrollTo(0, 0);
 }
 $('btnFull').style.display = '';
@@ -901,7 +906,7 @@ $('btnFull').onclick = e => {
     const p = (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl);
     if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch {} }).catch(() => {});
     $('bar').classList.add('hidden');
-    note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons'));
+    note(L('Коснитесь экрана, чтобы вернуть кнопки', 'Tap the screen to bring back the buttons', 'Батырмаларды қайтару үшін экранды түртіңіз'));
     return;
   }
   setImmersive(!fsEl.classList.contains('immersive'));
@@ -910,8 +915,8 @@ document.addEventListener('fullscreenchange', () => { fullLabel(!!document.fulls
 
 setInterval(() => {
   $('info').textContent = LAN
-    ? L(`Wi-Fi напрямую · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} к/с · ${rxMbps.toFixed(1)} Мбит/с · задержка ~${lagMs} мс`, `Wi-Fi direct · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} fps · ${rxMbps.toFixed(1)} Mbit/s · latency ~${lagMs} ms`)
-    : L(`${PW}×${PH} · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`, `${PW}×${PH} · ${frames} fps · ${(bytes * 8 / 1e6).toFixed(1)} Mbit/s`);
+    ? L(`Wi-Fi напрямую · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} к/с · ${rxMbps.toFixed(1)} Мбит/с · задержка ~${lagMs} мс`, `Wi-Fi direct · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} fps · ${rxMbps.toFixed(1)} Mbit/s · latency ~${lagMs} ms`, `Wi-Fi тікелей · ${lv.videoWidth || '?'}×${lv.videoHeight || '?'} · ${Math.round(rxFps)} кадр/с · ${rxMbps.toFixed(1)} Мбит/с · кідіріс ~${lagMs} мс`)
+    : L(`${PW}×${PH} · ${frames} к/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`, `${PW}×${PH} · ${frames} fps · ${(bytes * 8 / 1e6).toFixed(1)} Mbit/s`, `${PW}×${PH} · ${frames} кадр/с · ${(bytes * 8 / 1e6).toFixed(1)} Мбит/с`);
   frames = 0; bytes = 0;
 }, 1000);
 

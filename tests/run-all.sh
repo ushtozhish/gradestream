@@ -38,6 +38,11 @@ start() { # $1 = simulated network jitter, ms
   start 0; GS_LOG=gs.log IPHONE=0 node fullscreentest.js 2>&1
   echo '```'
   echo
+  echo "## Interface languages (EN / RU / KZ)"
+  echo '```'
+  start 0; GS_LOG=gs.log node i18ntest.js 2>&1
+  echo '```'
+  echo
   echo "## Audio/video sync and frame pacing"
   echo
   echo "Sign: negative = sound ahead of the picture. Pacing at 25 fps: deviation of display intervals from 40 ms."

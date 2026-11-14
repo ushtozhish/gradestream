@@ -37,16 +37,23 @@ var (
 )
 
 var (
-	snapFlat bool // файлы прямо в выбранной папке (без подпапки сессии)
-	snapEN   bool // язык имён и сводок — фиксируется при создании папки сессии
+	snapFlat bool   // файлы прямо в выбранной папке (без подпапки сессии)
+	snapLang string // язык имён и сводок (en/ru/kk) — фиксируется при создании папки сессии
 )
 
 // SL — текст на языке текущей сессии снимков
-func SL(ru, en string) string {
-	if snapEN {
-		return en
+func SL(ru, en, kk string) string {
+	lg := snapLang
+	if lg == "" {
+		lg = currentLang()
 	}
-	return ru
+	switch lg {
+	case "ru":
+		return ru
+	case "kk":
+		return kk
+	}
+	return en
 }
 
 func sessionDir() (string, error) {
@@ -56,10 +63,10 @@ func sessionDir() (string, error) {
 		return snapDir, nil
 	}
 	base, sub := snapSettings()
-	snapEN = langEN.Load()
+	snapLang = currentLang()
 	d := base
 	if sub {
-		d = filepath.Join(base, SL("Сессия ", "Session ")+sessionTime.Format("2006-01-02 15-04"))
+		d = filepath.Join(base, SL("Сессия ", "Session ", "Сессия ")+sessionTime.Format("2006-01-02 15-04"))
 	}
 	if err := os.MkdirAll(d, 0o755); err != nil {
 		return "", err
@@ -77,9 +84,9 @@ func snapPrefix() string {
 }
 func summaryName(ext string) string {
 	if snapFlat {
-		return SL("комментарии ", "comments ") + sessionTime.Format("2006-01-02 15-04") + ext
+		return SL("комментарии ", "comments ", "пікірлер ") + sessionTime.Format("2006-01-02 15-04") + ext
 	}
-	return SL("комментарии", "comments") + ext
+	return SL("комментарии", "comments", "пікірлер") + ext
 }
 
 // Смена папки: следующие снимки начнут новую сводку в новом месте
@@ -118,12 +125,12 @@ func handleSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	dir, err := sessionDir()
 	if err != nil {
-		jsonResp(w, map[string]any{"ok": false, "error": L("не удалось создать папку: ", "could not create the folder: ") + err.Error()})
+		jsonResp(w, map[string]any{"ok": false, "error": L("не удалось создать папку: ", "could not create the folder: ", "қалтаны жасау мүмкін болмады: ") + err.Error()})
 		return
 	}
 	marked, err1 := decodeDataURL(req.Marked)
 	if err1 != nil || len(marked) == 0 {
-		jsonResp(w, map[string]any{"ok": false, "error": L("повреждённое изображение", "corrupted image")})
+		jsonResp(w, map[string]any{"ok": false, "error": L("повреждённое изображение", "corrupted image", "бүлінген сурет")})
 		return
 	}
 
@@ -179,20 +186,20 @@ func jsonResp(w http.ResponseWriter, v any) {
 func writeSummary(dir string, entries []snapEntry) {
 	// Текстовая сводка
 	var t strings.Builder
-	fmt.Fprintf(&t, SL("GradeStream — комментарии клиента\r\nСессия: %s\r\n\r\n", "GradeStream — client comments\r\nSession: %s\r\n\r\n"), sessionTime.Format(SL("02.01.2006 15:04", "2006-01-02 15:04")))
+	fmt.Fprintf(&t, SL("GradeStream — комментарии клиента\r\nСессия: %s\r\n\r\n", "GradeStream — client comments\r\nSession: %s\r\n\r\n", "GradeStream — клиент пікірлері\r\nСессия: %s\r\n\r\n"), sessionTime.Format(SL("02.01.2006 15:04", "2006-01-02 15:04", "02.01.2006 15:04")))
 	for _, e := range entries {
 		c := e.Text
 		if c == "" {
-			c = SL("(без комментария)", "(no comment)")
+			c = SL("(без комментария)", "(no comment)", "(пікірсіз)")
 		}
-		fmt.Fprintf(&t, SL("№%d  %s  [%s]  точка %d,%d  —  %s\r\n     %s\r\n\r\n", "#%d  %s  [%s]  point %d,%d  —  %s\r\n     %s\r\n\r\n"), e.N, e.Time, e.Dev, e.X, e.Y, c, e.Marked)
+		fmt.Fprintf(&t, SL("№%d  %s  [%s]  точка %d,%d  —  %s\r\n     %s\r\n\r\n", "#%d  %s  [%s]  point %d,%d  —  %s\r\n     %s\r\n\r\n", "№%d  %s  [%s]  нүкте %d,%d  —  %s\r\n     %s\r\n\r\n"), e.N, e.Time, e.Dev, e.X, e.Y, c, e.Marked)
 	}
 	os.WriteFile(filepath.Join(dir, summaryName(".txt")), append([]byte{0xEF, 0xBB, 0xBF}, t.String()...), 0o644)
 
 	// HTML-сводка со снимками
 	var h strings.Builder
-	h.WriteString(`<!doctype html><html lang="` + SL("ru", "en") + `"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>` + SL("Комментарии клиента", "Client comments") + `</title><style>
+	h.WriteString(`<!doctype html><html lang="` + SL("ru", "en", "kk") + `"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>` + SL("Комментарии клиента", "Client comments", "Клиент пікірлері") + `</title><style>
 body{margin:0;background:#111;color:#e8e8e8;font:15px/1.45 "Segoe UI",-apple-system,Roboto,sans-serif}
 header{padding:18px 24px;border-bottom:1px solid #2c2c2c}h1{font-size:18px;margin:0}.m{color:#8c8c8c;font-size:13px}
 main{padding:20px 24px;display:grid;gap:22px}
@@ -202,17 +209,17 @@ main{padding:20px 24px;display:grid;gap:22px}
 .n{font-size:22px;font-weight:600;color:#e0a040}.c{font-size:17px;margin:8px 0 12px;white-space:pre-wrap}
 a{color:#e0a040}label{display:flex;gap:8px;align-items:center;margin-top:14px;color:#8c8c8c;cursor:pointer}
 .done{opacity:.45}</style></head><body>
-<header><h1>` + SL("Комментарии клиента", "Client comments") + `</h1><div class="m">` + SL("Сессия ", "Session "))
-	h.WriteString(sessionTime.Format(SL("02.01.2006 15:04", "2006-01-02 15:04")))
-	fmt.Fprintf(&h, SL(` · меток: %d · страница обновляется сама каждые 10 секунд</div></header><main>`, ` · markers: %d · this page refreshes every 10 seconds</div></header><main>`), len(entries))
+<header><h1>` + SL("Комментарии клиента", "Client comments", "Клиент пікірлері") + `</h1><div class="m">` + SL("Сессия ", "Session ", "Сессия "))
+	h.WriteString(sessionTime.Format(SL("02.01.2006 15:04", "2006-01-02 15:04", "02.01.2006 15:04")))
+	fmt.Fprintf(&h, SL(` · меток: %d · страница обновляется сама каждые 10 секунд</div></header><main>`, ` · markers: %d · this page refreshes every 10 seconds</div></header><main>`, ` · белгілер: %d · бет әр 10 секунд сайын өзі жаңарады</div></header><main>`), len(entries))
 	for _, e := range entries {
 		c := e.Text
 		if c == "" {
-			c = SL("(без комментария)", "(no comment)")
+			c = SL("(без комментария)", "(no comment)", "(пікірсіз)")
 		}
 		fmt.Fprintf(&h, `<div class="e" id="e%d"><a href="%s" target="_blank"><img src="%s" loading="lazy"></a><div>
-<div class="n">`+SL("№", "#")+`%d</div><div class="m">%s · %s · `+SL("точка", "point")+` %d, %d</div><div class="c">%s</div>
-<label><input type="checkbox" data-n="%d"> `+SL("Учтено", "Done")+`</label></div></div>`,
+<div class="n">`+SL("№", "#", "№")+`%d</div><div class="m">%s · %s · `+SL("точка", "point", "нүкте")+` %d, %d</div><div class="c">%s</div>
+<label><input type="checkbox" data-n="%d"> `+SL("Учтено", "Done", "Ескерілді")+`</label></div></div>`,
 			e.N, html.EscapeString(e.Marked), html.EscapeString(e.Marked), e.N, e.Time, html.EscapeString(e.Dev), e.X, e.Y,
 			html.EscapeString(c), e.N)
 	}
@@ -247,7 +254,7 @@ func handleSnapFolder(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Query().Get("action") {
 	case "choose":
 		base, _ := snapSettings()
-		p, err := pickFolder(L("Куда сохранять скриншоты меток клиента", "Where to save client marker screenshots"), base)
+		p, err := pickFolder(L("Куда сохранять скриншоты меток клиента", "Where to save client marker screenshots", "Клиент белгілерінің скриншоттарын қайда сақтау керек"), base)
 		if err == errCancelled {
 			jsonResp(w, snapFolderState())
 			return
@@ -259,7 +266,7 @@ func handleSnapFolder(w http.ResponseWriter, r *http.Request) {
 		// Проверим, что в папку можно писать
 		test := filepath.Join(p, ".gradestream-test")
 		if err := os.WriteFile(test, []byte("ok"), 0o644); err != nil {
-			jsonResp(w, map[string]any{"ok": false, "error": L("в эту папку нельзя записывать: ", "cannot write to this folder: ") + err.Error()})
+			jsonResp(w, map[string]any{"ok": false, "error": L("в эту папку нельзя записывать: ", "cannot write to this folder: ", "бұл қалтаға жазу мүмкін емес: ") + err.Error()})
 			return
 		}
 		os.Remove(test)

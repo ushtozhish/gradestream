@@ -255,15 +255,17 @@ func networkProfileWarning() string {
 	}
 	list := "«" + strings.ReplaceAll(names, "\r\n", "», «") + "»"
 	return L("Сеть "+list+" помечена в Windows как общедоступная — телефоны могут не подключиться. Сделайте её частной: Параметры → Сеть и Интернет → Wi-Fi (или Ethernet) → свойства сети → «Частная сеть».",
-		"The network "+list+" is marked Public in Windows — phones may fail to connect. Make it Private: Settings → Network & internet → Wi-Fi (or Ethernet) → network properties → Private network.")
+		"The network "+list+" is marked Public in Windows — phones may fail to connect. Make it Private: Settings → Network & internet → Wi-Fi (or Ethernet) → network properties → Private network.", list+" желісі Windows-та қоғамдық деп белгіленген — телефондар қосыла алмауы мүмкін. Оны жеке етіңіз: Параметрлер → Желі және Интернет → Wi-Fi (немесе Ethernet) → желі қасиеттері → Жеке желі.")
 }
 
-// Русский интерфейс для русской, казахской, белорусской и украинской Windows
-func systemPrefersRussian() bool {
+// Язык по интерфейсу Windows: казахский (0x3f) → kk, русский (0x19) → ru, иначе en
+func systemLang() string {
 	id, _, _ := kernel32.NewProc("GetUserDefaultUILanguage").Call()
 	switch id & 0x3ff { // основной язык
-	case 0x19, 0x3f, 0x23, 0x22:
-		return true
+	case 0x3f:
+		return "kk"
+	case 0x19:
+		return "ru"
 	}
-	return false
+	return "en"
 }

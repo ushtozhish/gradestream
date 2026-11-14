@@ -118,17 +118,17 @@ func trayMenu(hwnd uintptr) {
 		t, _ := syscall.UTF16PtrFromString(text)
 		pAppendMenu.Call(menu, flags, id, uintptr(unsafe.Pointer(t)))
 	}
-	add(cmdShow, L("Показать окно GradeStream", "Show GradeStream window"), 0)
+	add(cmdShow, L("Показать окно GradeStream", "Show GradeStream window", "GradeStream терезесін көрсету"), 0)
 	trayMu.Lock()
 	live := trayLive
 	trayMu.Unlock()
 	if live {
-		add(cmdStop, L("Остановить трансляцию", "Stop streaming"), 0)
+		add(cmdStop, L("Остановить трансляцию", "Stop streaming", "Трансляцияны тоқтату"), 0)
 	} else {
-		add(cmdStop, L("Остановить трансляцию", "Stop streaming"), 0x1|0x2) // MF_GRAYED|MF_DISABLED
+		add(cmdStop, L("Остановить трансляцию", "Stop streaming", "Трансляцияны тоқтату"), 0x1|0x2) // MF_GRAYED|MF_DISABLED
 	}
 	add(0, "", 0x800) // MF_SEPARATOR
-	add(cmdExit, L("Выход (закрыть трансляцию и программу)", "Exit (stop streaming and close)"), 0)
+	add(cmdExit, L("Выход (закрыть трансляцию и программу)", "Exit (stop streaming and close)", "Шығу (трансляцияны тоқтатып, жабу)"), 0)
 	var pt [2]int32
 	pGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
 	pSetForegroundWindow.Call(hwnd)
@@ -166,7 +166,7 @@ func trayWndProc(hwnd, msg, wparam, lparam uintptr) uintptr {
 		trayMu.Lock()
 		setUTF16(nid.Info[:], trayBalloonTxt)
 		trayMu.Unlock()
-		setUTF16(nid.InfoTitle[:], L("GradeStream продолжает трансляцию", "GradeStream is still streaming"))
+		setUTF16(nid.InfoTitle[:], L("GradeStream продолжает трансляцию", "GradeStream is still streaming", "GradeStream трансляцияны жалғастыруда"))
 		nid.InfoFlags = 0x1 // NIIF_INFO
 		pShellNotifyIcon.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
 		return 0
@@ -223,9 +223,9 @@ func startTray(onShow, onStop, onExit func()) {
 }
 
 func setTrayState(live bool, viewers int) {
-	tip := L("GradeStream — не транслируется", "GradeStream — not streaming")
+	tip := L("GradeStream — не транслируется", "GradeStream — not streaming", "GradeStream — трансляция жоқ")
 	if live {
-		tip = L("GradeStream — в эфире, зрителей: ", "GradeStream — live, viewers: ") + strconv.Itoa(viewers)
+		tip = L("GradeStream — в эфире, зрителей: ", "GradeStream — live, viewers: ", "GradeStream — эфирде, көрермендер: ") + strconv.Itoa(viewers)
 	}
 	trayMu.Lock()
 	changed := tip != trayTip || live != trayLive

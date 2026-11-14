@@ -13,7 +13,7 @@ type Settings struct {
 	SnapBase  string `json:"snapBase"`  // папка для скриншотов; пусто — Документы\GradeStream
 	Subfolder *bool  `json:"subfolder"` // подпапка на каждую сессию (по умолчанию да)
 	Mode      string `json:"mode"`      // internet | lan | both
-	Lang      string `json:"lang"`      // ru | en | "" — по языку Windows
+	Lang      string `json:"lang"`      // en | ru | kk | "" — по языку Windows
 }
 
 var (

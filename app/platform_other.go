@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func appDataDir() string       { return filepath.Join(os.TempDir(), "gradestream") }
@@ -25,7 +26,13 @@ func openPath(p string)    { log.Println("OPEN:", p) }
 
 func networkProfileWarning() string { return "" }
 
-func systemPrefersRussian() bool {
-	l := os.Getenv("LANG")
-	return len(l) >= 2 && (l[:2] == "ru" || l[:2] == "kk" || l[:2] == "be" || l[:2] == "uk")
+func systemLang() string {
+	l := strings.ToLower(os.Getenv("LANG"))
+	switch {
+	case strings.HasPrefix(l, "kk"):
+		return "kk"
+	case strings.HasPrefix(l, "ru"):
+		return "ru"
+	}
+	return "en"
 }

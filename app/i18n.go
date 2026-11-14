@@ -1,41 +1,39 @@
 package main
 
-// Язык интерфейса: русский или английский.
-// Настройка «auto» — по языку интерфейса Windows (русский для ru/kk/be/uk, иначе английский).
+// Язык интерфейса: английский, русский или казахский (порядок EN → RU → KZ).
+// Настройка «» (авто) — по языку интерфейса Windows: kk → казахский, ru → русский, иначе английский.
 
 import "sync/atomic"
 
-var langEN atomic.Bool
+var lang atomic.Value // "en" | "ru" | "kk"
+
+func init() { lang.Store("en") }
 
 // L возвращает текст на текущем языке программы
-func L(ru, en string) string {
-	if langEN.Load() {
-		return en
-	}
-	return ru
-}
-
-func currentLang() string {
-	if langEN.Load() {
-		return "en"
-	}
-	return "ru"
-}
-
-// Применяет настройку языка: "ru", "en" или "" (авто)
-func applyLang(pref string) {
-	switch pref {
-	case "en":
-		langEN.Store(true)
+func L(ru, en, kk string) string {
+	switch lang.Load().(string) {
 	case "ru":
-		langEN.Store(false)
-	default:
-		langEN.Store(!systemPrefersRussian())
+		return ru
+	case "kk":
+		return kk
 	}
+	return en
+}
+
+func currentLang() string { return lang.Load().(string) }
+
+func validLang(p string) bool { return p == "en" || p == "ru" || p == "kk" }
+
+// Применяет настройку языка: "en", "ru", "kk" или "" (авто)
+func applyLang(pref string) {
+	if !validLang(pref) {
+		pref = systemLang()
+	}
+	lang.Store(pref)
 }
 
 func setLang(pref string) {
-	if pref != "ru" && pref != "en" {
+	if !validLang(pref) {
 		pref = ""
 	}
 	setMu.Lock()

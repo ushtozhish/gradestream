@@ -57,3 +57,4 @@ jobs:
             tests/results.md
             tests/color_*.json
             tests/gs.log
+            tests/shots/*.png

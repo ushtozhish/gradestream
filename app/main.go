@@ -302,7 +302,7 @@ func deviceName(ua string) string {
 	case strings.Contains(ua, "Windows"):
 		return "Windows"
 	}
-	return L("устройство", "device")
+	return L("устройство", "device", "құрылғы")
 }
 
 func routes() *http.ServeMux {
@@ -455,7 +455,7 @@ func routes() *http.ServeMux {
 				// Окно свернули во время эфира — один раз подскажем, где программа
 				if !hiddenHintShown {
 					hiddenHintShown = true
-					trayNotify(L("Окно свёрнуто. Вернуть его — клик по значку GradeStream возле часов. Остановить или выйти — правый клик по значку.", "The window is minimized. Click the GradeStream icon near the clock to bring it back; right-click it to stop or exit."))
+					trayNotify(L("Окно свёрнуто. Вернуть его — клик по значку GradeStream возле часов. Остановить или выйти — правый клик по значку.", "The window is minimized. Click the GradeStream icon near the clock to bring it back; right-click it to stop or exit.", "Терезе жиырылды. Қайтару үшін сағат жанындағы GradeStream белгішесін басыңыз; тоқтату немесе шығу үшін оны тінтуірдің оң жағымен басыңыз."))
 				}
 			case "ping":
 			}
@@ -573,7 +573,7 @@ func main() {
 		}
 	}
 	if ln == nil {
-		fatal(L("Не удалось открыть локальный порт: ", "Could not open a local port: ") + err.Error())
+		fatal(L("Не удалось открыть локальный порт: ", "Could not open a local port: ", "Жергілікті портты ашу мүмкін болмады: ") + err.Error())
 	}
 	log.Printf("listening on 127.0.0.1:%d, room %s", port, room)
 

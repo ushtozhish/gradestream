@@ -51,14 +51,14 @@ func cloudflaredPath() string {
 func startTunnel(port int) {
 	if os.Getenv("GS_NO_TUNNEL") != "" {
 		tunMu.Lock()
-		tunStatus, tunErr = "error", L("туннель отключён", "tunnel disabled")
+		tunStatus, tunErr = "error", L("туннель отключён", "tunnel disabled", "туннель өшірілген")
 		tunMu.Unlock()
 		return
 	}
 	bin := cloudflaredPath()
 	if bin == "" {
 		tunMu.Lock()
-		tunStatus, tunErr = "missing", L("cloudflared.exe не найден рядом с программой — переустановите GradeStream", "cloudflared.exe not found next to the app — reinstall GradeStream")
+		tunStatus, tunErr = "missing", L("cloudflared.exe не найден рядом с программой — переустановите GradeStream", "cloudflared.exe not found next to the app — reinstall GradeStream", "cloudflared.exe бағдарлама жанынан табылмады — GradeStream-ді қайта орнатыңыз")
 		tunMu.Unlock()
 		return
 	}
@@ -97,7 +97,7 @@ func startTunnel(port int) {
 			stdout, _ := cmd.StdoutPipe()
 			if err := cmd.Start(); err != nil {
 				tunMu.Lock()
-				tunStatus, tunErr = "error", L("не удалось запустить cloudflared: ", "could not start cloudflared: ")+err.Error()
+				tunStatus, tunErr = "error", L("не удалось запустить cloudflared: ", "could not start cloudflared: ", "cloudflared іске қосылмады: ")+err.Error()
 				tunMu.Unlock()
 				log.Println(tunErr)
 				return
@@ -154,7 +154,7 @@ func startTunnel(port int) {
 			tail := strings.Join(lastLines, "\n")
 			llMu.Unlock()
 			tunStatus = "error"
-			tunErr = L("Туннель Cloudflare не поднялся. Проверьте интернет и что антивирус/фаервол не блокирует cloudflared.exe. Пробую снова…", "The Cloudflare tunnel did not come up. Check your internet connection and that antivirus/firewall is not blocking cloudflared.exe. Retrying…")
+			tunErr = L("Туннель Cloudflare не поднялся. Проверьте интернет и что антивирус/фаервол не блокирует cloudflared.exe. Пробую снова…", "The Cloudflare tunnel did not come up. Check your internet connection and that antivirus/firewall is not blocking cloudflared.exe. Retrying…", "Cloudflare туннелі іске қосылмады. Интернетті және антивирус/брандмауэр cloudflared.exe-ні бұғаттамайтынын тексеріңіз. Қайта әрекет жасалуда…")
 			tunMu.Unlock()
 			if stop {
 				tunMu.Lock()
