@@ -1,0 +1,44 @@
+1
+00:00:00,500 --> 00:00:04,200
+GradeStream
+Your Resolve grade on the client's phone. Just a link.
+
+2
+00:00:04,800 --> 00:00:08,500
+How it works: monitor → GradeStream → link → phone
+
+3
+00:00:08,500 --> 00:00:11,200
+The client installs nothing
+
+4
+00:00:11,800 --> 00:00:15,000
+Notes right on the frame: the client taps and writes
+
+5
+00:00:15,000 --> 00:00:19,700
+The marker reaches you, with a snapshot of that frame
+
+6
+00:00:20,300 --> 00:00:24,200
+Scopes on the client's phone:
+Waveform, Parade, Vectorscope
+
+7
+00:00:24,200 --> 00:00:27,700
+Out of range — the scope frame flashes red
+
+8
+00:00:28,300 --> 00:00:32,700
+Vertical video — 1080×1920
+
+9
+00:00:33,300 --> 00:00:39,200
+Color arrives as a signal: average ΔE2000 0.22
+(visibility threshold ≈ 1.0)
+
+10
+00:00:39,800 --> 00:00:44,200
+GradeStream — free, open source
+github.com/ushtozhish/gradestream
+

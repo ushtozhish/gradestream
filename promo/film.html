@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<style>
+:root{--or:#e9a23b;--bg:#0b0c0e;--fg:#f2f2f0;--mu:#9a9fa6;--line:#2a2d32}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:var(--W);height:var(--H);overflow:hidden;background:var(--bg);color:var(--fg);font-family:Inter,sans-serif;-webkit-font-smoothing:antialiased}
+#bg{position:absolute;inset:0;background:
+ radial-gradient(1200px 700px at 78% 18%,rgba(233,162,59,.10),transparent 60%),
+ radial-gradient(900px 600px at 10% 95%,rgba(90,110,160,.07),transparent 60%),var(--bg)}
+#grid{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.2px);background-size:40px 40px;mask-image:linear-gradient(#000,transparent 85%)}
+#hud{position:absolute;left:80px;top:56px;right:80px;display:flex;justify-content:space-between;align-items:center;font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu)}
+#hud b{color:var(--or);font-weight:500;margin-right:14px}
+#brand{display:flex;align-items:center;gap:12px;letter-spacing:.02em;text-transform:none;color:#cfd2d6;font-size:24px}
+#brand img{width:30px;height:30px}
+#prog{position:absolute;left:0;bottom:0;height:3px;background:var(--or);opacity:.8}
+.scene{position:absolute;inset:0}
+.c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+h1{font-weight:600;font-size:76px;letter-spacing:-.02em;line-height:1.08}
+h2{font-weight:600;font-size:64px;letter-spacing:-.015em;line-height:1.1}
+.sub{font-size:34px;color:var(--mu);line-height:1.4;font-weight:400}
+.or{color:var(--or)}
+.chip{display:inline-block;border:1.5px solid var(--line);border-radius:10px;padding:12px 22px;font-size:28px;color:#d8dade;background:rgba(255,255,255,.02)}
+.chip.on{border-color:var(--or);color:var(--or)}
+.phone{position:relative;border:10px solid #1b1c20;padding:14px 34px;border-radius:60px;box-shadow:0 0 0 2px #34373c,0 40px 90px rgba(0,0,0,.55);background:#000}
+.phone img{display:block;width:100%;border-radius:8px}
+.phone.up{padding:34px 14px;border-radius:56px}
+.phone .ov{position:absolute;left:34px;top:14px;width:calc(100% - 68px)}
+.shot{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1.5px #2e3136,0 40px 90px rgba(0,0,0,.55)}
+.shot img{display:block;width:100%}
+.ring{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;border:3px solid var(--or);border-radius:50%}
+.node{display:flex;flex-direction:column;align-items:center;gap:18px;width:300px}
+.ic{width:150px;height:150px;border:1.5px solid var(--line);border-radius:28px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.02)}
+.ic.on{border-color:var(--or)}
+.ic svg{width:78px;height:78px;stroke:#e6e6e3;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nt{font-size:32px;font-weight:600}.ns{font-size:24px;color:var(--mu);margin-top:-8px}
+.conn{position:relative;width:120px;height:150px;align-self:flex-start}
+.conn .ln{position:absolute;left:0;right:0;top:75px;height:2px;background:#3a3d43;transform-origin:left}
+.conn .dot{position:absolute;top:71px;width:10px;height:10px;border-radius:50%;background:var(--or);box-shadow:0 0 14px var(--or)}
+.card{width:500px;border:1.5px solid var(--line);border-radius:22px;padding:42px 40px;text-align:left;background:rgba(255,255,255,.02)}
+.card.on{border-color:var(--or)}
+.card .t{font-size:44px;font-weight:600}.card .w{font-size:28px;color:#d4d6da;margin-top:14px}
+.card .h{font-size:24px;color:var(--mu);margin-top:8px}
+.card .k{font-size:20px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);margin-top:44px}
+.card .v{font-size:54px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums}
+.step{display:flex;gap:18px;align-items:baseline;text-align:left;font-size:30px;color:#d8dade;line-height:1.35}
+.step i{font-style:normal;color:var(--or);font-weight:600;font-size:26px;min-width:28px}
+.tg{position:absolute;background:var(--or);color:#141414;font-weight:600;font-size:26px;padding:10px 18px;border-radius:10px;white-space:nowrap;transform:translate(-100%,-50%)}
+.hl{position:absolute;border:3px solid var(--or);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.0)}
+.toggle{display:inline-block;width:86px;height:50px;border-radius:25px;background:#3a3d43;position:relative;vertical-align:middle}
+.toggle span{position:absolute;top:4px;left:4px;width:42px;height:42px;border-radius:50%;background:#fff}
+.axis{position:relative;height:2px;background:#4a4d53}
+.foot{font-size:24px;color:#80858c;line-height:1.45}
+/* portrait */
+body.P h1{font-size:92px} body.P h2{font-size:72px} body.P .sub{font-size:40px}
+body.P .chip{font-size:30px} body.P #hud{left:60px;right:60px;top:110px;font-size:24px}
+</style></head>
+<body>
+<div id="bg"></div><div id="grid"></div>
+<div id="hud"><div id="chap"></div><div id="brand"><img src="assets/icon.png">GradeStream</div></div>
+<div id="stage"></div>
+<div id="prog"></div>
+<script>
+const Q = new URLSearchParams(location.search);
+const P = Q.get('p') === '1';                  // portrait (Shorts)
+const W = P ? 1080 : 1920, H = P ? 1920 : 1080;
+document.documentElement.style.setProperty('--W', W + 'px'); document.documentElement.style.setProperty('--H', H + 'px');
+if (P) document.body.classList.add('P');
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ez = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const eo = x => 1 - Math.pow(1 - cl(x), 3);
+const ICON = {
+ mon:'<svg viewBox="0 0 48 48"><rect x="5" y="8" width="38" height="24" rx="2"/><path d="M18 40h12M24 32v8"/><path d="M11 26l7-8 6 5 5-6 8 9" stroke="#e9a23b"/></svg>',
+ link:'<svg viewBox="0 0 48 48"><path d="M20 28l8-8"/><path d="M22 14l3-3a8 8 0 0 1 11 11l-3 3"/><path d="M26 34l-3 3a8 8 0 0 1-11-11l3-3"/></svg>',
+ phone:'<svg viewBox="0 0 48 48"><rect x="14" y="4" width="20" height="40" rx="4"/><path d="M21 9h6"/><circle cx="24" cy="24" r="4" stroke="#e9a23b"/></svg>',
+};
+// ---------- scenes ----------
+// each: {chap, html(), up(t,d,root)}
+const S = {};
+S.title = { chap: '', html: () => `
+ <div class="c" style="gap:0">
+  <img a="0.15 .9 scale" src="assets/icon.png" style="width:${P?190:150}px;height:${P?190:150}px;margin-bottom:44px">
+  <h1 a="0.45 .9 up" style="font-size:${P?150:132}px;letter-spacing:-.035em">GradeStream</h1>
+  <div a="0.8 .9 grow" style="width:${P?420:520}px;height:2px;background:var(--or);margin:${P?44:36}px 0"></div>
+  <div class="sub" a="1.0 .9 up" style="color:#dfe1e4;font-size:${P?54:46}px;line-height:1.3">Грейд из DaVinci Resolve —<br>на телефоне клиента. <span class="or">По ссылке.</span></div>
+  <div a="1.6 .9 fade" style="margin-top:${P?70:54}px;font-size:${P?32:28}px;color:var(--mu);letter-spacing:.06em">Windows 10/11 · бесплатно · открытый код</div>
+ </div>` };
+S.flow = { chap: 'Как это работает', html: () => {
+  const nodes = [
+   ['mon', 'Монитор', 'Clean Feed из Resolve'],
+   ['app', 'GradeStream', 'на вашем ПК'],
+   ['link', 'Ссылка', 'WhatsApp, Telegram, QR'],
+   ['phone', 'Телефон клиента', 'Safari или Chrome']];
+  let row = '';
+  nodes.forEach((n, i) => {
+   const ic = n[0] === 'app' ? '<img src="assets/icon.png" style="width:86px;height:86px">' : ICON[n[0]];
+   row += `<div class="node" a="${0.5 + i * 0.9} .8 up"><div class="ic ${n[0]==='app'?'on':''}">${ic}</div><div class="nt">${n[1]}</div><div class="ns">${n[2]}</div></div>`;
+   if (i < 3) row += `<div class="conn" data-i="${i}"><div class="ln" a="${0.9 + i * 0.9} .7 grow"></div></div>`;
+  });
+  return `<div class="c">
+   <h2 a="0.1 .8 up" style="margin-bottom:${P?90:110}px">Как это работает</h2>
+   <div class="row" style="display:flex;${P?'flex-direction:column;align-items:center;gap:0':'align-items:flex-start'}">${row}</div>
+   <div class="sub" a="4.4 .9 up" style="margin-top:${P?90:110}px;color:#dfe1e4">Клиенту ничего не нужно устанавливать —<br><span class="or">ни приложений, ни аккаунтов</span></div>
+  </div>`; },
+ init(root) { if (P) root.querySelectorAll('.conn').forEach(c => { c.style.width = '150px'; c.style.height = '64px'; c.style.alignSelf = 'center';
+   const l = c.querySelector('.ln'); l.style.left = '74px'; l.style.right = 'auto'; l.style.top = '0'; l.style.width = '2px'; l.style.height = '64px'; l.style.transformOrigin = 'top'; l.setAttribute('a', l.getAttribute('a').replace('grow', 'growy')); });
+   root.querySelectorAll('.node').forEach(n => { if (P) { n.style.flexDirection = 'row'; n.style.width = '720px'; n.style.gap = '34px'; n.style.textAlign = 'left'; n.style.alignItems = 'center'; n.querySelector('.ic').style.flex = 'none';
+     const t = document.createElement('div'); t.append(n.querySelector('.nt'), n.querySelector('.ns')); t.querySelector('.ns').style.marginTop = '6px'; n.append(t); } }); },
+ up(t, d, root) { root.querySelectorAll('.conn').forEach(c => { const i = +c.dataset.i; const st = 1.6 + i * 0.9;
+   c.querySelectorAll('.dot').forEach(x => x.remove()); if (t < st) return;
+   for (let k = 0; k < 3; k++) { const ph = ((t - st) * 0.8 + k / 3) % 1; const o = Math.sin(ph * Math.PI);
+     const dd = document.createElement('div'); dd.className = 'dot'; dd.style.opacity = o * cl((t - st) * 2);
+     if (P) { dd.style.left = '70px'; dd.style.top = (ph * 64 - 5) + 'px'; } else dd.style.left = (ph * 120 - 5) + 'px';
+     c.append(dd); } }); } };
+S.host = { chap: 'Окно программы', html: () => `
+ <div style="position:absolute;left:80px;top:150px;width:1440px;height:840px;border-radius:16px;overflow:hidden;box-shadow:0 0 0 1.5px #2e3136,0 40px 90px rgba(0,0,0,.6)" a="0.1 1 up">
+  <div id="kb" style="position:absolute;left:0;top:0;width:1440px;transform-origin:50% 30%"><img src="assets/host.png" style="width:1440px;display:block">
+   <div class="hl" style="left:72.6%;top:6.2%;width:26%;height:11.6%" a="2.0 .5 fade"></div>
+   <div class="hl" style="left:72.6%;top:19.0%;width:26%;height:13.6%" a="3.6 .5 fade"></div>
+   <div class="hl" style="left:1.2%;top:6.2%;width:70.6%;height:56.6%" a="5.2 .5 fade"></div>
+  </div></div>
+ <div style="position:absolute;left:1570px;top:150px;width:290px;display:flex;flex-direction:column;gap:0;text-align:left">
+  <div class="nt" a="0.4 .8 up" style="font-size:38px;line-height:1.15">Выбрали монитор с&nbsp;Clean&nbsp;Feed — и&nbsp;вы <span class="or">в&nbsp;эфире</span></div>
+  <div a="2.1 .6 up" style="margin-top:60px"><div class="or" style="font-size:22px;letter-spacing:.12em">01</div><div style="font-size:27px;color:#d8dade;line-height:1.35;margin-top:6px">Интернет, Wi-Fi или оба сразу</div></div>
+  <div a="3.7 .6 up" style="margin-top:34px"><div class="or" style="font-size:22px;letter-spacing:.12em">02</div><div style="font-size:27px;color:#d8dade;line-height:1.35;margin-top:6px">Ссылка для клиента и QR-код для комнаты</div></div>
+  <div a="5.3 .6 up" style="margin-top:34px"><div class="or" style="font-size:22px;letter-spacing:.12em">03</div><div style="font-size:27px;color:#d8dade;line-height:1.35;margin-top:6px">Предпросмотр — ровно то, что получает клиент</div></div>
+ </div>`,
+ up(t, d, root) { root.querySelector('#kb').style.transform = `scale(${1 + 0.03 * ez(t / d)})`; } };
+S.modes = { chap: 'Как смотрят зрители', html: () => `
+ <div class="c">
+  <h2 a="0.1 .8 up" style="margin-bottom:80px">Интернет, Wi-Fi <span class="or">или оба сразу</span></h2>
+  <div style="display:flex;gap:44px">
+   <div class="card" a="0.7 .8 up"><div class="t">Интернет</div><div class="w">клиент в другом городе</div><div class="h">через Cloudflare, по HTTPS,<br>порты открывать не нужно</div><div class="k">задержка</div><div class="v">≈ 0,2–0,5 с</div></div>
+   <div class="card" a="1.3 .8 up"><div class="t">Wi-Fi</div><div class="w">все в одной комнате</div><div class="h">напрямую по локальной сети,<br>интернет не нужен</div><div class="k">задержка</div><div class="v">≈ 0,1–0,25 с</div></div>
+   <div class="card on" a="1.9 .8 up"><div class="t or">Оба сразу</div><div class="w">комната + удалённые зрители</div><div class="h">каждый кадр кодируется<br>один раз для всех</div><div class="k">зрителей</div><div class="v">сколько нужно</div></div>
+  </div>
+  <div class="foot" a="3.4 .8 fade" style="margin-top:64px">Задержка — оценка по замерам на стенде плюс типичная задержка сети</div>
+ </div>` };
+S.color = { chap: 'Цвет', html: () => { const bw = P ? 860 : 1100; return `
+ <div class="c">
+  <h2 a="0.1 .8 up">Цвет доходит <span class="or">как сигнал</span></h2>
+  <div class="sub" a="0.5 .8 up" style="margin-top:24px">Значения RGB — те же, что выдаёт Resolve</div>
+  <div a="1.0 .8 up" style="margin-top:${P?90:64}px;display:flex;align-items:baseline;gap:28px">
+   <div style="font-size:${P?44:40}px;color:var(--mu)">средний ΔE2000</div>
+   <div id="num" style="font-size:${P?190:170}px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums" class="or">0,00</div></div>
+  <div a="1.6 .8 fade" style="position:relative;width:${bw}px;margin-top:${P?70:44}px;height:120px">
+   <div class="axis" style="position:absolute;left:0;right:0;top:40px"></div>
+   <div id="bar" style="position:absolute;left:0;top:34px;height:14px;background:var(--or);border-radius:7px;width:0"></div>
+   <div style="position:absolute;left:${bw/2}px;top:4px;height:76px;border-left:2px dashed #c9ccd1"></div>
+   <div style="position:absolute;left:${bw/2}px;top:84px;transform:translateX(-50%);font-size:24px;color:#c9ccd1;white-space:nowrap">порог заметности ≈ 1,0</div>
+   <div style="position:absolute;left:0;top:84px;font-size:22px;color:var(--mu)">0</div>
+   <div style="position:absolute;right:0;top:84px;font-size:22px;color:var(--mu)">2</div>
+  </div>
+  <div style="display:flex;${P?'flex-direction:column;gap:18px':'gap:22px'};margin-top:${P?80:56}px">
+   <span class="chip" a="2.6 .6 up">41 патч через реальную цепочку</span>
+   <span class="chip" a="3.0 .6 up">чёрный 0 / белый 255 — без сжатия</span>
+   <span class="chip" a="3.4 .6 up">BT.709 · полный диапазон · sRGB</span>
+  </div>
+  <div class="foot" a="4.4 .8 fade" style="margin-top:${P?80:50}px;${P?'padding:0 80px':''}">Экран телефона — не эталон. GradeStream — для обсуждения правок,<br>а не для финальной приёмки цвета.</div>
+ </div>`; },
+ up(t, d, root) { const k = ez((t - 1.2) / 1.6); root.querySelector('#num').textContent = (0.22 * k).toFixed(2).replace('.', ',');
+   root.querySelector('#bar').style.width = ((P ? 860 : 1100) * 0.11 * k) + 'px'; } };
+S.marks = { chap: 'Метки клиента', html: () => { const pw = P ? 760 : 780, sw = P ? 760 : 800;
+ return `
+ <div class="c" style="justify-content:flex-start;padding-top:${P?250:150}px">
+  <h2 a="0.1 .8 up">Замечания —${P?'<br>':' '}<span class="or">прямо на кадре</span></h2>
+  <div style="display:flex;${P?'flex-direction:column;gap:20px':'gap:44px'};align-items:center;margin-top:${P?50:60}px">
+   <div a="0.5 .8 up" style="text-align:left">
+    <div class="foot" style="margin:0 0 16px 8px;letter-spacing:.12em;text-transform:uppercase;font-size:20px">у клиента</div>
+    <div class="phone" style="width:${pw}px"><img src="assets/phone.png"><img id="pm" class="ov" src="assets/phone-mark.png" style="opacity:0"><div class="ring" id="tap" style="left:calc(34px + (100% - 68px) * .607);top:calc(14px + (100% - 28px) * .484);opacity:0"></div></div></div>
+   <div id="arrow" style="font-size:60px;color:var(--or);${P?'transform:rotate(90deg);margin:-14px 0':''}" a="3.4 .5 fade">→</div>
+   <div a="3.6 .8 up" style="text-align:left">
+    <div class="foot" style="margin:0 0 16px 8px;letter-spacing:.12em;text-transform:uppercase;font-size:20px">у вас</div>
+    <div class="shot" style="width:${sw}px"><img src="assets/preview.png"><div class="ring" id="r2" style="left:62.5%;top:47.5%;opacity:0;border-color:#fff"></div></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:${P?12:16}px;margin-top:${P?44:56}px;align-self:center">
+   <div class="step" a="1.0 .6 up"><i>1</i>${P?'Клиент касается кадра и пишет':'Клиент касается кадра и пишет комментарий'}</div>
+   <div class="step" a="3.8 .6 up"><i>2</i>${P?'Метка приходит к вам на экран':'Метка приходит к вам: на предпросмотр и поверх монитора с Clean Feed'}</div>
+   <div class="step" a="6.0 .6 up"><i>3</i>${P?'Снимок кадра и сводка комментариев':'Сохраняется снимок того самого кадра и сводка всех комментариев'}</div>
+  </div>
+ </div>`; },
+ up(t, d, root) { const tap = root.querySelector('#tap'); const a = t - 1.4;
+   tap.style.opacity = a > 0 && a < 0.9 ? 1 - a / 0.9 : 0; tap.style.transform = `scale(${0.6 + a * 1.4})`;
+   root.querySelector('#pm').style.opacity = cl((t - 1.6) / 0.4);
+   const r = root.querySelector('#r2'); const b = (t - 4.4) % 1.6; r.style.opacity = t > 4.4 ? (1 - b / 1.6) * 0.9 : 0; r.style.transform = `scale(${0.8 + b * 1.2})`; } };
+S.scopes = { chap: 'Скопы у клиента', html: () => { const pw = P ? 920 : 1100, ph = (pw - 88) / 2.163 + 48, uw = 400, uh = (uw - 48) / 0.4614 + 88;
+ return `
+ <div class="c" style="justify-content:flex-start;padding-top:${P?250:150}px">
+  <h2 a="0.1 .8 up">Скопы <span class="or">у клиента</span></h2>
+  <div style="display:flex;gap:18px;margin-top:34px">
+   <span class="chip on" a="0.7 .5 up">Waveform</span><span class="chip on" a="0.9 .5 up">Parade</span><span class="chip on" a="1.1 .5 up">Vectorscope</span></div>
+  ${P ? `<div style="position:relative;margin-top:60px;width:${uw}px;height:${uh}px" a="0.4 .9 up">
+     <div class="phone up" id="pA" style="position:absolute;left:0;top:0;width:${uw}px"><img src="assets/scopes-big-portrait.png"></div>
+     <div class="phone" id="pB" style="position:absolute;left:${(uw-920)/2}px;top:${(uh-ph)/2}px;width:920px;opacity:0"><img src="assets/scopes-alarm.png"></div></div>`
+  : `<div style="position:relative;margin-top:50px;width:${pw}px;height:${ph}px" a="0.4 .9 up">
+     <div class="phone" id="pA" style="position:absolute;left:0;top:0;width:${pw}px"><img src="assets/phone-scopes.png"></div>
+     <div class="phone" id="pB" style="position:absolute;left:0;top:0;width:${pw}px;opacity:0"><img src="assets/scopes-alarm.png"></div></div>`}
+  <div style="position:relative;margin-top:${P?44:40}px;height:90px;width:100%;${P?"font-size:34px":""}">
+   <div id="c1" class="sub" style="${P?"font-size:34px;":""}position:absolute;left:0;right:0;color:#dfe1e4">Считаются на телефоне по пришедшей картинке.<br><span style="color:var(--mu)">Вы решаете: разрешены или выключены.</span></div>
+   <div id="c2" class="sub" style="${P?"font-size:34px;":""}position:absolute;left:0;right:0;opacity:0;color:#dfe1e4"><span style="color:#ff5a4f">Выход за пределы</span> — рамка скопа мигает красным<br><span style="color:var(--mu)">выбитые света, провалы, насыщенность больше 100%</span></div>
+  </div>
+ </div>`; },
+ up(t, d, root) { const s = P ? 4.2 : 5.0; const k = cl((t - s) / 0.6);
+   root.querySelector('#pB').style.opacity = k; root.querySelector('#pA').style.opacity = P ? 1 - k : 1;
+   const c1 = root.querySelector('#c1'), c2 = root.querySelector('#c2'); c1.style.opacity = cl((t - 1.4) / .6) * (1 - k); c2.style.opacity = k; } };
+S.vert = { chap: 'Вертикальные видео', html: () => P ? `
+ <div class="c" style="justify-content:flex-start;padding-top:250px">
+  <h2 a="0.1 .8 up">Вертикальные видео</h2>
+  <div class="sub" a="0.4 .8 up" style="margin-top:24px">Повернули монитор в Windows —<br>поток <span class="or">1080×1920</span></div>
+  <div class="phone up" a="0.6 .9 up" style="margin-top:70px;width:420px"><img src="assets/vertical-upright.png"></div>
+ </div>` : `
+ <div class="c">
+  <h2 a="0.1 .8 up">Вертикальные видео — <span class="or">1080×1920</span></h2>
+  <div class="sub" a="0.4 .8 up" style="margin-top:24px">Повернули монитор с Clean Feed в Windows — поток тоже вертикальный</div>
+  <div style="display:flex;gap:80px;align-items:center;margin-top:70px">
+   <div class="phone up" a="0.8 .9 up" style="width:260px;border-radius:44px;padding:28px 10px"><img src="assets/vertical-upright.png"></div>
+   <div class="phone" a="1.3 .9 up" style="width:1000px"><img src="assets/vertical-sideways.png"></div>
+  </div>
+ </div>` };
+S.sync = { chap: 'Просмотр монтажа', html: () => { const L = -150, R = 150, w = 1300, x = v => (v - L) / (R - L) * w;
+ return `
+ <div class="c">
+  <h2 a="0.1 .8 up">Просмотр монтажа: <span class="or">звук синхронно</span></h2>
+  <div class="sub" a="0.4 .8 up" style="margin-top:24px">Режим «Плавно и синхронно» — для режиссёра и продюсера</div>
+  <div a="1.0 .8 fade" style="position:relative;width:${w}px;height:260px;margin-top:90px">
+   <div style="position:absolute;left:${x(-45)}px;width:${x(125)-x(-45)}px;top:40px;height:110px;background:rgba(255,255,255,.05);border:1.5px solid #3a3d43;border-radius:8px"></div>
+   <div style="position:absolute;left:${x(-45)+16}px;top:6px;font-size:22px;color:var(--mu);white-space:nowrap">незаметно для зрителя (ITU-R BT.1359)</div>
+   <div class="axis" style="position:absolute;left:0;right:0;top:95px"></div>
+   <div id="band" style="position:absolute;left:${x(-16)}px;width:${x(17)-x(-16)}px;top:72px;height:46px;background:var(--or);border-radius:6px;transform-origin:center"></div>
+   ${[-150,-100,-45,0,50,125].map(v => `<div style="position:absolute;left:${x(v)}px;top:160px;transform:translateX(-50%);font-size:22px;color:var(--mu);font-variant-numeric:tabular-nums">${v>0?'+':''}${v} мс</div><div style="position:absolute;left:${x(v)}px;top:150px;height:8px;border-left:1.5px solid #5a5d63"></div>`).join('')}
+   <div style="position:absolute;left:0;top:210px;font-size:22px;color:var(--mu)">← звук раньше картинки</div>
+   <div style="position:absolute;right:0;top:210px;font-size:22px;color:var(--mu)">звук позже →</div>
+  </div>
+  <div style="display:flex;gap:22px;margin-top:50px">
+   <span class="chip on" a="2.4 .6 up">замерено: медиана −16…+17 мс</span>
+   <span class="chip" a="2.8 .6 up">ровные кадры, буфер 0,12–0,7 с</span>
+  </div>
+ </div>`; },
+ up(t, d, root) { root.querySelector('#band').style.transform = `scaleX(${eo((t - 1.6) / .8)})`; } };
+S.iphone = { chap: 'iPhone', html: () => { const steps = ['Настройки', 'Приложения', 'Safari', 'Дополнения', 'Feature Flags', 'Fullscreen API'];
+ return `
+ <div class="c">
+  <h2 a="0.1 .8 up">Полный экран с метками на iPhone — <span class="or">в Safari</span></h2>
+  <div class="sub" a="0.4 .8 up" style="margin-top:20px">Один раз включите настройку:</div>
+  <div style="display:flex;align-items:center;gap:16px;margin-top:44px">
+   ${steps.map((s, i) => `<span class="chip ${i==5?'on':''}" a="${0.9 + i * 0.35} .5 up">${s}</span>${i < 5 ? `<span a="${1.05 + i * 0.35} .4 fade" style="color:var(--mu);font-size:30px">→</span>` : ''}`).join('')}
+   <span a="3.0 .5 fade" style="margin-left:14px"><span class="toggle" id="tg"><span></span></span></span>
+  </div>
+  <div class="phone" a="3.6 .9 up" style="width:720px;margin-top:60px"><img src="assets/phone.png"></div>
+  <div class="sub" a="4.2 .8 up" style="margin-top:44px;font-size:30px">Ссылку из мессенджера откройте <span style="color:#dfe1e4">в Safari</span>.<br>На Android, iPad и компьютере ничего настраивать не нужно.</div>
+ </div>`; },
+ up(t, d, root) { const k = ez((t - 3.4) / .4); const g = root.querySelector('#tg');
+   g.style.background = k > .5 ? '#34c759' : '#3a3d43'; g.firstElementChild.style.transform = `translateX(${36 * k}px)`; } };
+S.end = { chap: '', html: () => `
+ <div class="c">
+  <img a="0.1 .8 scale" src="assets/icon.png" style="width:${P?170:130}px;height:${P?170:130}px;margin-bottom:36px">
+  <h1 a="0.3 .8 up" style="font-size:${P?130:110}px;letter-spacing:-.035em">GradeStream</h1>
+  <div class="sub" a="0.6 .8 up" style="margin-top:22px">Бесплатно · открытый код · Windows 10/11</div>
+  <div a="1.0 .8 up" style="margin-top:${P?90:60}px;border:2px solid var(--or);border-radius:16px;padding:${P?'26px 34px':'22px 40px'};font-size:${P?40:40}px;font-weight:500;${P?'':'letter-spacing:.01em'}">github.com/<span class="or">ushtozhish/gradestream</span></div>
+  <div class="foot" a="1.5 .8 fade" style="margin-top:30px;font-size:${P?32:28}px">Скачать установщик — ссылка в описании</div>
+ </div>` };
+
+const PLAN = P ? [['title', 4.5], ['flow', 7], ['marks', 8.5], ['scopes', 8], ['vert', 5], ['color', 6.5], ['end', 5]]
+ : [['title', 6], ['flow', 9.5], ['host', 8.5], ['modes', 8.5], ['color', 9], ['marks', 10.5], ['scopes', 10], ['vert', 7], ['sync', 8.5], ['iphone', 8], ['end', 7]];
+const TOTAL = PLAN.reduce((a, b) => a + b[1], 0);
+let cur = -1, root = null, els = [];
+function load(i) {
+  cur = i; const sc = S[PLAN[i][0]]; const st = document.getElementById('stage'); st.innerHTML = '';
+  root = document.createElement('div'); root.className = 'scene'; root.innerHTML = sc.html(); st.append(root);
+  if (sc.init) sc.init(root);
+  els = [...root.querySelectorAll('[a]')].map(e => { const [s, d, k] = e.getAttribute('a').split(' '); return { e, s: +s, d: +d, k }; });
+  const n = PLAN.slice(0, i + 1).filter(p => S[p[0]].chap).length;
+  document.getElementById('chap').innerHTML = sc.chap ? `<b>${String(n).padStart(2, '0')}</b>${sc.chap}` : '';
+}
+window.setT = (i, t) => {     // scene index, local time
+  if (i !== cur) load(i);
+  const sc = S[PLAN[i][0]], d = PLAN[i][1];
+  for (const { e, s, d: du, k } of els) {
+    const x = eo((t - s) / du); let tr = '';
+    if (k === 'grow') { e.style.transform = `scaleX(${x})`; e.style.transformOrigin = e.style.transformOrigin || 'left'; continue; }
+    if (k === 'growy') { e.style.transform = `scaleY(${x})`; continue; }
+    e.style.opacity = x;
+    if (k === 'up') tr = `translateY(${(1 - x) * 34}px)`;
+    if (k === 'scale') tr = `scale(${0.86 + 0.14 * x})`;
+    if (k === 'left') tr = `translateX(${(1 - x) * -40}px)`;
+    if (tr) e.style.transform = tr;
+  }
+  if (sc.up) sc.up(t, d, root);
+  // scene exit / final fade
+  const last = i === PLAN.length - 1;
+  root.style.opacity = last ? 1 - cl((t - (d - 1.0)) / 1.0) : 1 - cl((t - (d - 0.45)) / 0.45);
+  const hud = document.getElementById('hud');
+  hud.style.opacity = last ? 1 - cl((t - (d - 1.0)) / 1.0) : 1;
+  document.getElementById('chap').style.opacity = sc.chap ? cl(t / 0.5) * (1 - cl((t - (d - 0.45)) / 0.45)) : 0;
+  document.getElementById('brand').style.opacity = (i === 0 || last) ? 0 : 1;
+  const g = PLAN.slice(0, i).reduce((a, b) => a + b[1], 0) + t;
+  const pr = document.getElementById('prog'); pr.style.width = (g / TOTAL * 100) + '%'; pr.style.opacity = last ? 0.8 * (1 - cl((t - (d - 1.0)) / 1.0)) : 0.8;
+};
+window.PLAN = PLAN; window.ready = Promise.all([...document.images].map(im => im.decode().catch(() => 0)));
+</script>
+</body></html>
