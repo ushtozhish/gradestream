@@ -1,3 +1,5 @@
+<p align="right"><b>English</b> · <a href="README.ru.md">Русский</a></p>
+
 <p align="center"><img src="docs/img/icon.png" width="80" alt=""></p>
 
 <h1 align="center">GradeStream</h1>
@@ -11,7 +13,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 
 ![GradeStream control window: live preview with client markers, internet and Wi-Fi links with a QR code](docs/img/control-window.png)
 
-<p align="center"><img src="docs/img/client-phone.png" width="760" alt="What the client sees on an iPhone: the picture with Turn sound on, Mark a point, Fullscreen and Hide buttons"><br>
+<p align="center"><img src="docs/img/client-phone.png" width="760" alt="What the client sees on an iPhone: the picture with a row of small tiles — sound, marker, scopes, full screen, info, hide"><br>
 <sub>What the client sees — just a link opened in Safari or Chrome.</sub></p>
 
 > Screenshots are taken from the real interface on a test bench. Links, audio devices, monitors and the viewer list in them are sample data; the picture is an original synthetic frame.
@@ -21,7 +23,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 - [Why GradeStream](#why-gradestream)
 - [Remote editing review: sound in sync, smooth playback](#remote-editing-review-sound-in-sync-smooth-playback)
 - [Tour of the app](#tour-of-the-app)
-  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. 1920×1080, or 1080×1920 for vertical videos](#4-19201080-or-10801920-for-vertical-videos) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
+  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. 1920×1080, or 1080×1920 for vertical videos](#4-19201080-or-10801920-for-vertical-videos) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) ([full screen on iPhone](#full-screen-on-iphone)) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
 - [Settings reference](#settings-reference)
 - [How it works](#how-it-works) · [Technical specification](#technical-specification) · [Color: what to trust](#color-what-to-trust-and-what-not-to)
 - [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations)
@@ -158,7 +160,7 @@ The client hears sound after tapping **Turn sound on** (phones only allow audio 
 
 ### 7. What the client sees
 
-<p align="center"><img src="docs/img/client-phone-mark.png" width="760" alt="Client's phone in marker mode: Tap a spot on the frame"></p>
+<p align="center"><img src="docs/img/client-phone-mark.png" width="760" alt="Client's phone after tapping the frame in marker mode: the comment line above the tiles"></p>
 
 The client gets one row of small tiles; a tile that is on turns orange. Tap the picture to hide or bring back the tiles.
 
@@ -171,7 +173,7 @@ The client gets one row of small tiles; a tile that is on turns orange. Tap the 
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
 | **Arrow down** | hides the tiles |
 
-The page follows the language of the client's phone (English or Russian). With the internet link it also keeps the phone screen from dimming.
+The page follows the language of the client's phone (English or Russian); scope names stay in English. With the internet link it also keeps the phone screen from dimming.
 
 #### Full screen on iPhone
 
@@ -439,14 +441,15 @@ The script downloads the official cloudflared, verifies Cloudflare's signature, 
 |---|---|
 | `app/` | the app: server, tunnel, WebRTC, audio capture (WASAPI), on-screen markers, tray; pages `web/host.html` (control window) and `web/view.html` (viewer) |
 | `installer/` | per-user installer (no admin rights), "Installed apps" registration, shortcuts |
-| `tests/` | measurements: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
+| `tests/` | measurements and checks: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `scopetest.js` (scope accuracy), `layouttest.js` (client layouts and scope switching, landscape and portrait screens), `alarmtest.js` (out-of-range alarm), `fullscreentest.js` (full screen with tiles, iPhone and others), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
 | `tools/mkicon.py` | icon and Windows resource generation |
 
 ## Limitations
 
 - Windows 10/11 only (audio capture, on-screen markers and the tray use Windows APIs).
 - One monitor or one window is streamed.
-- 8-bit SDR, 1080p output only.
+- 8-bit SDR only; output 1920×1080, or 1080×1920 for a monitor in portrait orientation.
+- On iPhone a true full screen with the tiles works only in Safari with the Fullscreen API flag on ([details](#full-screen-on-iphone)).
 - On-screen markers require Windows 10 2004+ and "Entire screen" capture. If Resolve shows the Clean Feed in exclusive fullscreen, the marker overlay can't appear on top of it.
 
 ## License
