@@ -1,4 +1,4 @@
-<p align="right"><b>English</b> · <a href="README.ru.md">Русский</a></p>
+<p align="right"><b>English</b> · <a href="README.ru.md">Русский</a> · <a href="README.kk.md">Қазақша</a></p>
 
 <p align="center"><img src="docs/img/icon.png" width="80" alt=""></p>
 
@@ -7,9 +7,10 @@
 <p align="center"><b>Stream a DaVinci Resolve Clean Feed to your client's phone via a link — nothing to install on the viewer's side.</b><br>
 For colorists and editors: show a grade during a remote session or to everyone in the room, and get feedback as markers placed right on the frame.</p>
 
-<p align="center">Windows 10/11 · free · open source (MIT) · English / Русский<br>
+<p align="center">Windows 10/11 · free · open source (MIT) · English / Русский / Қазақша<br>
 <a href="https://github.com/ushtozhish/gradestream/actions/workflows/build-and-measure.yml"><img src="https://github.com/ushtozhish/gradestream/actions/workflows/build-and-measure.yml/badge.svg" alt="Build and measure"></a><br>
-<a href="https://github.com/ushtozhish/gradestream/releases/latest"><b>⬇ Download the installer</b></a></p>
+<a href="https://github.com/ushtozhish/gradestream/releases/latest"><b>⬇ Download the installer</b></a><br><br>
+<a href="#️-support-the-dev"><img src="docs/support/badge-en.svg" height="30" alt="❤ Support the dev"></a></p>
 
 ![GradeStream control window: live preview with client markers, internet and Wi-Fi links with a QR code](docs/img/control-window.png)
 
@@ -26,7 +27,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
   - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. 1920×1080, or 1080×1920 for vertical videos](#4-19201080-or-10801920-for-vertical-videos) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) ([full screen on iPhone](#full-screen-on-iphone)) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
 - [Settings reference](#settings-reference)
 - [How it works](#how-it-works) · [Technical specification](#technical-specification) · [Color: what to trust](#color-what-to-trust-and-what-not-to)
-- [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations)
+- [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations) · [Support the dev](#️-support-the-dev)
 
 ## Why GradeStream
 
@@ -81,7 +82,7 @@ The control window opens when you start GradeStream. The large preview shows **e
 - **Choose screen** — pick the monitor (or a window) to stream. Choose "Entire screen" → your Clean Feed monitor.
 - **Pause** — freezes the stream; the client keeps the last frame. **Stop** ends the stream.
 - **Fullscreen** (or double-click the preview) — enlarges the preview.
-- The top bar shows the status (live / paused / not streaming), the browser engine and capture method, the version, and the **RU/EN** language switch.
+- The top bar shows the status (live / paused / not streaming), the browser engine and capture method, the version, and the **EN | RU | KZ** language switch.
 
 ### 2. Internet, Wi-Fi or both
 
@@ -173,7 +174,7 @@ The client gets one row of small tiles; a tile that is on turns orange. Tap the 
 | **i** | live stats: resolution, fps, bitrate (and latency on Wi-Fi) |
 | **Arrow down** | hides the tiles |
 
-The page follows the language of the client's phone (English or Russian); scope names stay in English. With the internet link it also keeps the phone screen from dimming.
+The page follows the language of the client's phone (English, Russian or Kazakh); scope names stay in English. With the internet link it also keeps the phone screen from dimming.
 
 #### Full screen on iPhone
 
@@ -192,7 +193,7 @@ Chrome, Firefox and Edge on iPhone run on Apple's engine and don't see Safari's 
 
 ### 8. Scopes for the client
 
-The client can open **Waveform, Parade and Vectorscope** right on the phone — the **Scope** tile in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once). Scope names stay in English in both languages — that is how people who use them know them.
+The client can open **Waveform, Parade and Vectorscope** right on the phone — the **Scope** tile in the bottom bar. You decide whether clients get them: **Quality → Client scopes → Allowed / Off** (switching off closes them on every phone at once). Scope names stay in English in every language — that is how people who use them know them.
 
 Scopes never cover the picture. When they open, the picture moves aside and the screen is split into black tiles on a 10% gray background — no empty space. Two layouts, one tap apart:
 
@@ -266,7 +267,7 @@ Each viewer is listed with the device type, how they're connected (via internet 
 - GradeStream has its **own taskbar icon** (even though it uses the Edge/Chrome engine) and an icon **near the clock**: click to bring the window back; right-click for **Show window / Stop streaming / Exit**. The tooltip shows "live, viewers: N".
 - Minimizing during a live stream shows a one-time notification about where the app went.
 - Closing the window while live asks for confirmation; **Exit** stops the stream, the tunnel and audio capture in one go.
-- **RU/EN** in the top bar switches the language without interrupting the stream. By default the app follows the Windows language.
+- **EN | RU | KZ** in the top bar switches the language without interrupting the stream. By default the app follows the Windows language: Kazakh Windows → Kazakh, Russian → Russian, anything else → English. The installer speaks the Windows language too.
 
 ## Settings reference
 
@@ -287,7 +288,7 @@ All settings are remembered between launches.
 | Screenshot folder | Client markers → Choose folder… | any folder | `Documents\GradeStream` |
 | Subfolder per session | Client markers | on / off | on |
 | Wi-Fi address | Wi-Fi link (shown when the PC has several networks) | the PC's local IP addresses | the main network |
-| Interface language | RU/EN in the top bar | English · Русский | Windows language |
+| Interface language | EN \| RU \| KZ in the top bar | English · Русский · Қазақша | Windows language |
 
 ## How it works
 
@@ -441,7 +442,7 @@ The script downloads the official cloudflared, verifies Cloudflare's signature, 
 |---|---|
 | `app/` | the app: server, tunnel, WebRTC, audio capture (WASAPI), on-screen markers, tray; pages `web/host.html` (control window) and `web/view.html` (viewer) |
 | `installer/` | per-user installer (no admin rights), "Installed apps" registration, shortcuts |
-| `tests/` | measurements and checks: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `scopetest.js` (scope accuracy), `layouttest.js` (client layouts and scope switching, landscape and portrait screens), `alarmtest.js` (out-of-range alarm), `fullscreentest.js` (full screen with tiles, iPhone and others), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
+| `tests/` | measurements and checks: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `scopetest.js` (scope accuracy), `layouttest.js` (client layouts and scope switching, landscape and portrait screens), `alarmtest.js` (out-of-range alarm), `fullscreentest.js` (full screen with tiles, iPhone and others), `i18ntest.js` (EN / RU / KZ languages, text fitting, screenshots), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
 | `tools/mkicon.py` | icon and Windows resource generation |
 
 ## Limitations
@@ -451,6 +452,18 @@ The script downloads the official cloudflared, verifies Cloudflare's signature, 
 - 8-bit SDR only; output 1920×1080, or 1080×1920 for a monitor in portrait orientation.
 - On iPhone a true full screen with the tiles works only in Safari with the Fullscreen API flag on ([details](#full-screen-on-iphone)).
 - On-screen markers require Windows 10 2004+ and "Entire screen" capture. If Resolve shows the Clean Feed in exclusive fullscreen, the marker overlay can't appear on top of it.
+
+## ❤️ Support the dev
+
+<a href="https://ushtozhish.github.io/support/"><img src="docs/support/support-en.svg" width="880" alt="Support the dev — Kaspi, page with a copy button"></a>
+
+> [!TIP]
+> Free and open source. If it helped you, chip in what you like — a voluntary gift, nothing in return, the tool stays free for everyone.
+>
+> - 🇰🇿 **Kaspi:** `4400 4303 6234 6964` (Artem V. — check the name before sending)
+> - 📱 **Page with a copy button:** https://ushtozhish.github.io/support/
+>
+> 🇷🇺 **Поддержи по-братски:** Kaspi `4400 4303 6234 6964` (проверь имя: Артём В.). Добровольно и безвозмездно. · 🇰🇿 **Бауырша қолда:** [қолдау беті](https://ushtozhish.github.io/support/)
 
 ## License
 

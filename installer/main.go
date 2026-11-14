@@ -23,7 +23,7 @@ import (
 
 const (
 	appName    = "GradeStream"
-	appVersion = "2.12.1"
+	appVersion = "2.13.0"
 	publisher  = "GradeStream"
 	regPath    = `Software\Microsoft\Windows\CurrentVersion\Uninstall\GradeStream`
 )

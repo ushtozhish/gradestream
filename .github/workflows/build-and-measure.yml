@@ -3,6 +3,7 @@ name: Build and measure
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -58,3 +59,31 @@ jobs:
             tests/color_*.json
             tests/gs.log
             tests/shots/*.png
+
+  release:
+    # A vX.Y.Z tag publishes a release: the installer zipped (browsers and mail are friendlier to .zip than .exe),
+    # its SHA-256, and the notes from .github/release-notes.md (EN → RU → KZ).
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [installer, measure]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: GradeStream-Setup
+          path: dist
+      - name: Zip and checksum
+        run: |
+          cd dist
+          exe=$(ls GradeStream-Setup-*.exe)
+          zip -9 "${exe%.exe}.zip" "$exe"
+          sha=$(sha256sum "$exe" | cut -d' ' -f1)
+          cp ../.github/release-notes.md notes.md
+          printf '\nSHA-256 of `%s`: `%s`\n' "$exe" "$sha" >> notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "GradeStream ${GITHUB_REF_NAME#v}" --notes-file dist/notes.md
