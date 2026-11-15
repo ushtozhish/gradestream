@@ -18,8 +18,9 @@ if command -v osslsigncode >/dev/null; then
   # give it the system CAs and judge by its report: signer is Cloudflare and no check failed.
   CA=/etc/ssl/certs/ca-certificates.crt
   sig=$(osslsigncode verify ${CA:+-CAfile "$CA"} -in "$PAYLOAD/cloudflared.exe" 2>&1 || true)
-  echo "$sig" | grep -iE 'subject|signer|verification|succeeded|failed' | head -20
-  if ! echo "$sig" | grep -q 'Cloudflare, Inc' || echo "$sig" | grep -qiE 'signature verification: failed|^Failed'; then
+  echo "$sig" | grep -E 'Subject: CN=Cloudflare|verification|Succeeded|Failed' || true
+  # signer is Cloudflare (newer osslsigncode escapes the comma: "Cloudflare\, Inc."), the file's own signature is ok, nothing failed
+  if ! echo "$sig" | grep -qE 'CN=Cloudflare\\?, Inc' || ! echo "$sig" | grep -qE '^Signature verification: ok' || echo "$sig" | grep -qiE 'verification: failed|^Failed'; then
     rm "$PAYLOAD/cloudflared.exe"; echo "cloudflared signature not verified"; exit 1
   fi
 else
