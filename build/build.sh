@@ -14,7 +14,14 @@ if [ ! -f "$PAYLOAD/cloudflared.exe" ]; then
     "https://github.com/cloudflare/cloudflared/releases/download/$CLOUDFLARED/cloudflared-windows-amd64.exe"
 fi
 if command -v osslsigncode >/dev/null; then
-  osslsigncode verify "$PAYLOAD/cloudflared.exe" | grep -q 'Cloudflare, Inc' || { rm "$PAYLOAD/cloudflared.exe"; echo "cloudflared signature not verified"; exit 1; }
+  # Newer osslsigncode exits non-zero when it can't build the full chain without a CA file;
+  # give it the system CAs and judge by its report: signer is Cloudflare and no check failed.
+  CA=/etc/ssl/certs/ca-certificates.crt
+  sig=$(osslsigncode verify ${CA:+-CAfile "$CA"} -in "$PAYLOAD/cloudflared.exe" 2>&1 || true)
+  echo "$sig" | grep -iE 'subject|signer|verification|succeeded|failed' | head -20
+  if ! echo "$sig" | grep -q 'Cloudflare, Inc' || echo "$sig" | grep -qiE 'signature verification: failed|^Failed'; then
+    rm "$PAYLOAD/cloudflared.exe"; echo "cloudflared signature not verified"; exit 1
+  fi
 else
   echo "Warning: osslsigncode not found, cloudflared signature not verified"
 fi
