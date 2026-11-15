@@ -21,7 +21,7 @@
          display:flex; gap:3px; padding:0; max-width:calc(100vw - 16px); }
   #bar, #note, #hint { z-index:7; }
   button { font:inherit; color:inherit; -webkit-tap-highlight-color:transparent; cursor:pointer; }
-  .tile { width:46px; height:26px; flex:0 0 46px; display:flex; align-items:center; justify-content:center;
+  .tile { width:46px; min-width:34px; height:26px; flex:0 1 46px; display:flex; align-items:center; justify-content:center;
           background:rgba(20,20,20,.86); color:#b4b4b4; border:1px solid #363636; border-radius:2px; padding:0; box-sizing:border-box;
           transition:opacity .16s ease, transform .16s ease, background .12s, color .12s; }
   .tile .t { display:none; }
@@ -75,6 +75,31 @@
   #scBody canvas { position:static; display:block; background:#000; flex:1 1 0; min-width:0; width:100%; height:100%; }
   body.scopes-on #c, body.scopes-on #lv { inset:auto; z-index:6; width:var(--picW); height:var(--picH); left:var(--picL); top:var(--picT);
                                           border:0; box-sizing:border-box; background:#000; }
+  /* ---------- Голосовой звонок ---------- */
+  #bar .tile:nth-child(7) { transition-delay:.12s } #bar .tile:nth-child(8) { transition-delay:.14s }
+  .tile.talk { box-shadow:0 0 0 2px rgba(224,160,64,.55); }
+  #talk { position:fixed; top:calc(8px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:7; display:none;
+          background:rgba(20,20,20,.9); color:#e0a040; border:1px solid #3a3a3a; border-radius:2px; padding:3px 9px; font-size:12px;
+          white-space:nowrap; max-width:calc(100vw - 150px); overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+  #callBox { position:fixed; left:50%; bottom:calc(46px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:9; display:none;
+             width:min(420px, calc(100vw - 24px)); background:rgba(20,20,20,.97); border:1px solid #3a3a3a; border-radius:2px; box-sizing:border-box;
+             padding:12px 12px 10px; font-size:13px; color:#ccc; -webkit-user-select:text; user-select:text; }
+  #callBox.show { display:block; }
+  #callBox h3 { margin:0 0 8px; font-size:13px; font-weight:600; color:#eee; }
+  #callBox .who { margin:0 0 10px; color:#999; }
+  #callBox .p { display:flex; align-items:center; gap:8px; padding:5px 0; border-top:1px solid #2a2a2a; }
+  #callBox .p:first-child { border-top:0; }
+  #callBox .p .n { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #callBox .p.talk .n { color:#e0a040; }
+  #callBox .p svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; flex:none; }
+  #callBox .p .off { color:#666; }
+  #callBox input { width:100%; box-sizing:border-box; background:#0d0d0d; border:1px solid #3a3a3a; border-radius:2px; color:#eee; outline:none;
+                   font:16px -apple-system, "Segoe UI", Roboto, sans-serif; padding:8px 9px; margin:0 0 10px; }
+  #callBox .row { display:flex; gap:8px; justify-content:flex-end; }
+  #callBox .btn { background:#2a2a2a; border:1px solid #3a3a3a; border-radius:2px; color:#ddd; padding:8px 14px; font-size:13px; }
+  #callBox .btn.pri { background:#e0a040; border-color:#e0a040; color:#141414; font-weight:600; }
+  #callBox .warnx { color:#e0a040; margin:0 0 10px; font-size:12px; line-height:1.45; }
+  #callList { margin:0 0 10px; max-height:40vh; overflow-y:auto; }
 </style>
 </head>
 <body>
@@ -85,6 +110,8 @@
 <div id="pause" data-en="Paused" data-kk="Кідіртілді">Пауза</div>
 <div id="info"></div>
 <div id="note"></div>
+<div id="talk"></div>
+<div id="callBox"></div>
 <div id="scopes">
   <div id="scHead">
     <button data-sc="wave">Waveform</button>
@@ -105,6 +132,8 @@
 </form>
 <div id="bar">
   <button id="btnSound" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><span class="t" data-en="Sound" data-kk="Дыбыс">Звук</span></button>
+  <button id="btnCall" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M5 4h3.5l1.8 4.6-2.3 1.4a11 11 0 0 0 6 6l1.4-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5C10.6 20 4 13.4 3.5 5.6A1.5 1.5 0 0 1 5 4z"/></svg><span class="t" data-en="Call" data-kk="Қоңырау">Звонок</span></button>
+  <button id="btnMic" class="tile" style="display:none"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/><path class="slash" d="M4 4l16 16"/></svg><span class="t" data-en="Microphone" data-kk="Микрофон">Микрофон</span></button>
   <button id="btnMark" class="tile"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><span class="t" data-en="Mark" data-kk="Белгі">Метка</span></button>
   <button id="btnScopes" class="tile" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16"/><path d="M3 15l4-5 3 3 4-6 3 4 4-2"/></svg><span class="t">Scopes</span></button>
   <button id="btnFull" class="tile" style="display:none"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="t" data-en="Full" data-kk="Экран">Экран</span></button>
@@ -112,6 +141,7 @@
   <button id="btnHide" class="tile"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span class="t" data-en="Hide" data-kk="Жасыру">Скрыть</span></button>
 </div>
 
+<script src="/call.js"></script>
 <script>
 const ROOM = '__ROOM__';
 // Язык страницы — по языку телефона зрителя
@@ -173,12 +203,14 @@ function connect() {
     if (t <= 1) onFrame(e.data);
     else if (t === 3) onOpus(e.data);
     else if (t === 4) onPCM(e.data);
+    else if (t === 5) voice.onPacket(e.data);
   };
 }
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 
 function onText(m) {
   if (m.t === 'hello') {
+    myId = m.id; callRejoin();
     live = m.live; if (!live) status(L('Трансляция ещё не началась. Ожидайте…', 'The stream hasn’t started yet. Please wait…', 'Трансляция әлі басталған жоқ. Күте тұрыңыз…'));
     if (LAN) { startRTC(); return; }
     sendCaps();
@@ -197,6 +229,8 @@ function onText(m) {
     if (!live) { if (!LAN) onAudioConfig({ on: false }); status(L('Трансляция остановлена', 'The stream has stopped', 'Трансляция тоқтады')); gotFrame = false; $('pause').style.display = 'none'; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, PW, PH); }
   }
   else if (m.t === 'pause') $('pause').style.display = m.on ? 'block' : 'none';
+  else if (m.t === 'call-state') onCallState(m);
+  else if (m.t === 'call-mic-off') { if (voice.micOn) { setMic(false); note(L('Ведущий выключил ваш микрофон', 'The host turned your microphone off', 'Жүргізуші микрофоныңызды өшірді')); } }
 }
 
 // ---------- Внутри сети: WebRTC ----------
@@ -448,7 +482,7 @@ function schedule(buf, ts) {
   if (Math.abs(nextTime - ideal) > 0.025 || nextTime < now + 0.005) nextTime = ideal;   // привязка заново
   const src = actx.createBufferSource();
   src.buffer = buf;
-  src.connect(actx.destination);
+  src.connect(progOut());
   src.start(nextTime);
   if (window.__avProbe) window.__avProbe('a', ts, nextTime, buf, actx);
   nextTime += buf.duration;
@@ -488,7 +522,7 @@ $('btnSound').onclick = async e => {
   soundOn = !soundOn;
   if (soundOn) {
     // На iPhone звук можно включить только по нажатию
-    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx();
     try { await actx.resume(); } catch {}
     const unlock = actx.createBuffer(1, 1, 22050), s = actx.createBufferSource();
     s.buffer = unlock; s.connect(actx.destination); s.start(0);
@@ -504,6 +538,129 @@ $('btnSound').onclick = async e => {
   $('btnSound').querySelector('.t').textContent = soundOn ? L('Звук вкл', 'Sound on', 'Дыбыс қосулы') : L('Звук', 'Sound', 'Дыбыс');
   $('btnSound').classList.toggle('on', soundOn);
 };
+
+
+// ---------- Голосовой звонок ----------
+// Звонок включает ведущий. Зритель присоединяется кнопкой «Звонок» и может выключить у себя микрофон.
+// Микрофон браузер даёт только на защищённой ссылке (https); по ссылке Wi-Fi (http) можно только слушать.
+function audioCtx() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+let progGain = null;
+function progOut() { if (!progGain) { progGain = actx.createGain(); progGain.connect(actx.destination); } return progGain; }
+let myId = null;
+const callUI = { on: false, joined: false, people: [], secure: '', told: false, box: false };
+const voice = GSCall.create({ send: b => { if (ws && ws.readyState === 1) ws.send(b); }, ctx: audioCtx });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const personName = p => p.host ? L('Ведущий', 'Host', 'Жүргізуші') : (p.name || p.dev || L('устройство', 'device', 'құрылғы'));
+const MIC_ON = '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>';
+const MIC_OFF = '<svg class="off" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M4 4l16 16"/></svg>';
+let savedName = ''; try { savedName = localStorage.getItem('gs.view.name') || ''; } catch {}
+
+function onCallState(m) {
+  callUI.on = !!m.on; callUI.people = m.people || []; callUI.secure = m.secure || '';
+  $('btnCall').style.display = callUI.on ? '' : 'none';
+  if (!callUI.on && callUI.joined) { leaveCall(true); note(L('Ведущий завершил звонок', 'The host ended the call', 'Жүргізуші қоңырауды аяқтады')); }
+  if (callUI.on && !callUI.joined && !callUI.told) {
+    callUI.told = true;
+    note(L('Идёт голосовой звонок — нажмите «Звонок» внизу, чтобы присоединиться', 'A voice call is on — tap «Call» below to join', 'Дауыстық қоңырау жүріп жатыр — қосылу үшін төмендегі «Қоңырау» батырмасын басыңыз'));
+  }
+  if (!callUI.on) { callUI.told = false; closeCallBox(); }
+  renderCall();
+}
+function renderCall() {
+  $('btnCall').classList.toggle('on', callUI.joined);
+  $('btnCall').querySelector('.t').textContent = callUI.joined ? L('В звонке', 'In call', 'Қоңырауда') : L('Звонок', 'Call', 'Қоңырау');
+  $('btnMic').style.display = callUI.joined && callUI.on ? '' : 'none';
+  $('btnMic').classList.toggle('on', voice.micOn);
+  $('btnMic').querySelector('.slash').style.display = voice.micOn ? 'none' : '';
+  $('btnMic').querySelector('.t').textContent = voice.micOn ? L('Микрофон вкл', 'Microphone on', 'Микрофон қосулы') : L('Микрофон выкл', 'Microphone off', 'Микрофон өшірулі');
+  if (callUI.box) renderCallBox();
+}
+function renderCallBox(tick) {
+  if (tick && !callUI.joined) return;                       // не перерисовывать поле имени, пока его заполняют
+  const b = $('callBox');
+  const others = callUI.people.filter(p => p.id !== myId);
+  const list = callListHTML();
+  const insecure = !GSCall.secure();
+  const warn = insecure ? `<div class="warnx">${L('По ссылке Wi-Fi браузер не даёт сайту микрофон — вы будете только слышать собеседников.', 'On the Wi-Fi link the browser does not allow the microphone — you will only hear the others.', 'Wi-Fi сілтемесінде браузер микрофонға рұқсат бермейді — сіз тек басқаларды естисіз.')}${callUI.secure ? ' ' + L('Чтобы говорить, откройте защищённую ссылку (картинка пойдёт через интернет):', 'To talk, open the secure link (the picture will come over the internet):', 'Сөйлеу үшін қорғалған сілтемені ашыңыз (сурет интернет арқылы келеді):') : ''}</div>` : '';
+  const secBtn = insecure && callUI.secure ? `<button class="btn" id="cbSecure">${L('Открыть защищённую ссылку', 'Open the secure link', 'Қорғалған сілтемені ашу')}</button>` : '';
+  if (!callUI.joined) {
+    b.innerHTML = `<h3>${L('Голосовой звонок', 'Voice call', 'Дауыстық қоңырау')}</h3>
+      <div class="who">${others.length ? L('В звонке: ', 'In the call: ', 'Қоңырауда: ') + others.map(p => esc(personName(p))).join(', ') : L('Пока никого', 'Nobody yet', 'Әзірге ешкім жоқ')}</div>
+      ${warn}
+      <input id="cname" maxlength="32" placeholder="${L('Ваше имя (видно остальным)', 'Your name (others will see it)', 'Атыңыз (басқаларға көрінеді)')}" value="${esc(savedName)}" enterkeyhint="go">
+      <div class="row">${secBtn}<button class="btn" id="cbClose">${L('Отмена', 'Cancel', 'Болдырмау')}</button><button class="btn pri" id="cbJoin">${L('Присоединиться', 'Join', 'Қосылу')}</button></div>`;
+    $('cbJoin').onclick = () => joinCall();
+    $('cname').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); joinCall(); } };
+  } else {
+    b.innerHTML = `<h3>${L('Голосовой звонок', 'Voice call', 'Дауыстық қоңырау')}</h3>
+      <div id="callList">${list}</div>${warn}
+      <div class="row">${secBtn}<button class="btn" id="cbLeave">${L('Выйти из звонка', 'Leave the call', 'Қоңыраудан шығу')}</button><button class="btn" id="cbClose">${L('Закрыть', 'Close', 'Жабу')}</button></div>`;
+    $('cbLeave').onclick = () => { leaveCall(); closeCallBox(); };
+  }
+  $('cbClose').onclick = () => closeCallBox();
+  if ($('cbSecure')) $('cbSecure').onclick = () => { location.href = callUI.secure; };
+}
+function callListHTML() {
+  const talk = new Set(voice.talking());
+  return callUI.people.map(p => `<div class="p${talk.has(p.id) ? ' talk' : ''}">${p.mic ? MIC_ON : MIC_OFF}<span class="n">${esc(personName(p))}${p.id === myId ? ' ' + L('(вы)', '(you)', '(сіз)') : ''}</span></div>`).join('');
+}
+function openCallBox() { callUI.box = true; $('callBox').classList.add('show'); renderCallBox(); }
+function closeCallBox() { callUI.box = false; $('callBox').classList.remove('show'); }
+$('callBox').addEventListener('click', e => e.stopPropagation());
+
+async function joinCall() {
+  const inp = $('cname');
+  if (inp) { savedName = inp.value.trim().slice(0, 32); try { localStorage.setItem('gs.view.name', savedName); } catch {} }
+  const c = audioCtx();                                     // на iPhone звук включается только по нажатию
+  try { await c.resume(); } catch {}
+  try { const u = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = u; s.connect(c.destination); s.start(0); } catch {}
+  voice.ensureAudio();
+  callUI.joined = true;
+  send({ t: 'call-join', on: true, name: savedName });
+  closeCallBox();
+  if (GSCall.secure()) await setMic(true);
+  else note(L('Вы в звонке и слышите собеседников. Микрофон по ссылке Wi-Fi недоступен', 'You are in the call and can hear the others. The microphone is not available on the Wi-Fi link', 'Сіз қоңыраудасыз және басқаларды естисіз. Wi-Fi сілтемесінде микрофон қолжетімсіз'));
+  renderCall();
+}
+function leaveCall(quiet) {
+  voice.stopMic(); callUI.joined = false;
+  if (!quiet) send({ t: 'call-join', on: false });
+  renderCall();
+}
+async function setMic(on) {
+  if (on) {
+    try { await voice.startMic(); note(L('Микрофон включён', 'Microphone on', 'Микрофон қосулы')); }
+    catch (e) {
+      voice.stopMic();
+      note(e.code === 'insecure'
+        ? L('Микрофон доступен только по защищённой ссылке (https)', 'The microphone works only on the secure link (https)', 'Микрофон тек қорғалған сілтемеде (https) жұмыс істейді')
+        : L('Нет доступа к микрофону. Разрешите его для этого сайта в настройках браузера', 'No access to the microphone. Allow it for this site in the browser settings', 'Микрофонға рұқсат жоқ. Браузер баптауларында осы сайтқа рұқсат беріңіз'));
+    }
+  } else voice.stopMic();
+  send({ t: 'call-mic', on: voice.micOn });
+  renderCall();
+}
+// После переподключения — снова в звонок с тем же именем и микрофоном
+function callRejoin() { if (callUI.joined) { send({ t: 'call-join', on: true, name: savedName }); send({ t: 'call-mic', on: voice.micOn }); } }
+
+$('btnCall').onclick = e => { e.stopPropagation(); if (callUI.box) closeCallBox(); else openCallBox(); };
+$('btnMic').onclick = e => {
+  e.stopPropagation();
+  if (!voice.micOn && !GSCall.secure()) { openCallBox(); return; }
+  setMic(!voice.micOn);
+};
+// Кто сейчас говорит; звук программы на это время приглушается
+setInterval(() => {
+  const ids = callUI.joined ? voice.talking().filter(id => id !== myId) : [];
+  const names = ids.map(id => { const p = callUI.people.find(x => x.id === id); return p ? personName(p) : null; }).filter(Boolean);
+  $('talk').textContent = names.length ? '● ' + names.join(', ') : '';
+  $('talk').style.display = names.length ? 'block' : 'none';
+  $('btnMic').classList.toggle('talk', voice.micOn && voice.micLevel > 0.4);
+  const duck = names.length > 0 ? 0.4 : 1;
+  if (progGain) progGain.gain.setTargetAtTime(duck, actx.currentTime, duck < 1 ? 0.05 : 0.3);
+  if (LAN && soundOn) lv.volume = duck;
+  if (callUI.box && callUI.joined) { const l = $('callList'); if (l) { const h = callListHTML(); if (h !== l.innerHTML) l.innerHTML = h; } }
+}, 200);
 
 // ---------- Метки ----------
 $('btnMark').onclick = e => {

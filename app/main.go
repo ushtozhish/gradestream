@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const appVersion = "2.13.0"
+const appVersion = "2.14.0"
 
 //go:embed web/*
 var webFS embed.FS
@@ -68,6 +68,9 @@ type Viewer struct {
 	pcm       atomic.Bool // нет декодера Opus — получает облегчённый PCM
 	wantAudio atomic.Bool // зритель включил звук
 	lan       bool        // подключён по локальной сети — видео идёт по WebRTC
+	inCall    atomic.Bool // участвует в голосовом звонке (слышит остальных)
+	mic       atomic.Bool // в звонке с включённым микрофоном
+	name      string      // имя, введённое при входе в звонок (под hub.mu)
 	rtc       *lanPeer
 	rtcBytes  int64
 
@@ -302,7 +305,15 @@ func deviceName(ua string) string {
 	case strings.Contains(ua, "Windows"):
 		return "Windows"
 	}
-	return L("устройство", "device", "құрылғы")
+	return "" // неизвестное устройство — подпись переводится при показе (devName)
+}
+
+// Тип устройства зрителя на текущем языке программы
+func (v *Viewer) devName() string {
+	if v.dev == "" {
+		return L("устройство", "device", "құрылғы")
+	}
+	return v.dev
 }
 
 func routes() *http.ServeMux {
@@ -334,6 +345,7 @@ func routes() *http.ServeMux {
 	})
 
 	mux.HandleFunc("/icon.png", serveIcon)
+	mux.HandleFunc("/call.js", serveCallJS)
 	mux.HandleFunc("/api/qr", handleQR)
 	mux.HandleFunc("/api/snapshot", handleSnapshot)
 	mux.HandleFunc("/api/open-folder", handleOpenFolder)
@@ -358,6 +370,7 @@ func routes() *http.ServeMux {
 		hub.mu.Unlock()
 		log.Println("host connected")
 		sendState()
+		ws.WriteText(string(callStateMsg()))
 		for {
 			op, data, err := ws.ReadMessage()
 			if err != nil {
@@ -371,6 +384,8 @@ func routes() *http.ServeMux {
 					hub.broadcastFrame(data)
 				} else if len(data) > 0 && data[0] == 3 {
 					hub.broadcastAudio(data, false)
+				} else if len(data) > 0 && data[0] == voiceOp {
+					relayVoice("host", data)
 				}
 				continue
 			}
@@ -457,6 +472,8 @@ func routes() *http.ServeMux {
 					hiddenHintShown = true
 					trayNotify(L("Окно свёрнуто. Вернуть его — клик по значку GradeStream возле часов. Остановить или выйти — правый клик по значку.", "The window is minimized. Click the GradeStream icon near the clock to bring it back; right-click it to stop or exit.", "Терезе жиырылды. Қайтару үшін сағат жанындағы GradeStream белгішесін басыңыз; тоқтату немесе шығу үшін оны тінтуірдің оң жағымен басыңыз."))
 				}
+			case "call", "call-mic", "call-mute":
+				hostCallCommand(m)
 			case "ping":
 			}
 		}
@@ -494,11 +511,14 @@ func sendState() {
 		PCM   bool   `json:"pcm"`
 		Lan   bool   `json:"lan"`
 		Rtc   bool   `json:"rtc"`
+		Name  string `json:"name"`
+		Call  bool   `json:"call"`
+		Mic   bool   `json:"mic"`
 	}
 	hub.mu.Lock()
 	list := []vInfo{}
 	for _, v := range hub.viewers {
-		list = append(list, vInfo{v.id, v.dev, v.kbps, v.drops.Load(), len(v.ch), v.wantAudio.Load(), v.pcm.Load(), v.lan, v.rtc != nil && v.rtc.connected()})
+		list = append(list, vInfo{v.id, v.devName(), v.kbps, v.drops.Load(), len(v.ch), v.wantAudio.Load(), v.pcm.Load(), v.lan, v.rtc != nil && v.rtc.connected(), v.name, v.inCall.Load(), v.mic.Load()})
 	}
 	live := hub.live && hub.host != nil
 	hub.mu.Unlock()
@@ -679,7 +699,7 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 	hub.viewers[v.id] = v
 	cfg, live, acfg, pcfg, scfg := hub.lastConfig, hub.live, hub.lastAudio, hub.lastPlay, hub.lastScopes
 	hub.mu.Unlock()
-	log.Printf("viewer %s (%s) joined", v.id, v.dev)
+	log.Printf("viewer %s (%s) joined", v.id, v.devName())
 
 	hello, _ := json.Marshal(map[string]any{"t": "hello", "id": v.id, "live": live})
 	v.enqueue(outMsg{op: opText, data: hello}, true)
@@ -697,11 +717,16 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 		v.enqueue(outMsg{op: opText, data: []byte(scfg)}, true)
 	}
 	sendState()
+	v.enqueue(outMsg{op: opText, data: callStateMsg()}, true)
 
 	for {
-		_, data, err := ws.ReadMessage()
+		op, data, err := ws.ReadMessage()
 		if err != nil {
 			break
+		}
+		if op == opBinary {
+			relayVoice(v.id, data)
+			continue
 		}
 		var m map[string]any
 		if json.Unmarshal(data, &m) != nil {
@@ -752,9 +777,13 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 			on, _ := m["on"].(bool)
 			v.wantAudio.Store(on)
 			sendState()
+		case "call-join", "call-mic":
+			viewerCallCommand(v, m)
 		case "mark":
 			m["from"] = v.id
-			m["dev"] = v.dev
+			hub.mu.Lock()
+			m["dev"] = v.display()
+			hub.mu.Unlock()
 			if s, ok := m["text"].(string); ok && len([]rune(s)) > 300 {
 				m["text"] = string([]rune(s)[:300])
 			}
@@ -774,12 +803,22 @@ func viewerWS(w http.ResponseWriter, r *http.Request, lan bool) {
 	ws.Close()
 	log.Printf("viewer %s left", v.id)
 	sendState()
+	if v.inCall.Load() {
+		broadcastCallState()
+	}
 }
 
 func serveIcon(w http.ResponseWriter, r *http.Request) {
 	b, _ := webFS.ReadFile("web/icon.png")
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "max-age=86400")
+	w.Write(b)
+}
+
+func serveCallJS(w http.ResponseWriter, r *http.Request) {
+	b, _ := webFS.ReadFile("web/call.js")
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
 	w.Write(b)
 }
 

@@ -20,7 +20,7 @@ var (
 	tunMu     sync.Mutex
 	tunURL    string
 	tunStatus = "starting" // starting | on | error | missing
-	tunErr    string
+	tunErr    Msg
 	tunCmd    *exec.Cmd
 	tunStop   bool
 	tunLoop   bool // цикл запуска cloudflared работает
@@ -30,7 +30,7 @@ var (
 func tunnelInfo() (string, string, string) {
 	tunMu.Lock()
 	defer tunMu.Unlock()
-	return tunURL, tunStatus, tunErr
+	return tunURL, tunStatus, tunErr.S()
 }
 
 func cloudflaredPath() string {
@@ -51,14 +51,14 @@ func cloudflaredPath() string {
 func startTunnel(port int) {
 	if os.Getenv("GS_NO_TUNNEL") != "" {
 		tunMu.Lock()
-		tunStatus, tunErr = "error", L("туннель отключён", "tunnel disabled", "туннель өшірілген")
+		tunStatus, tunErr = "error", M("туннель отключён", "tunnel disabled", "туннель өшірілген")
 		tunMu.Unlock()
 		return
 	}
 	bin := cloudflaredPath()
 	if bin == "" {
 		tunMu.Lock()
-		tunStatus, tunErr = "missing", L("cloudflared.exe не найден рядом с программой — переустановите GradeStream", "cloudflared.exe not found next to the app — reinstall GradeStream", "cloudflared.exe бағдарлама жанынан табылмады — GradeStream-ді қайта орнатыңыз")
+		tunStatus, tunErr = "missing", M("cloudflared.exe не найден рядом с программой — переустановите GradeStream", "cloudflared.exe not found next to the app — reinstall GradeStream", "cloudflared.exe бағдарлама жанынан табылмады — GradeStream-ді қайта орнатыңыз")
 		tunMu.Unlock()
 		return
 	}
@@ -81,7 +81,7 @@ func startTunnel(port int) {
 		for {
 			tunMu.Lock()
 			if tunStop {
-				tunStatus, tunURL, tunErr = "off", "", ""
+				tunStatus, tunURL, tunErr = "off", "", nil
 				tunMu.Unlock()
 				return
 			}
@@ -97,9 +97,9 @@ func startTunnel(port int) {
 			stdout, _ := cmd.StdoutPipe()
 			if err := cmd.Start(); err != nil {
 				tunMu.Lock()
-				tunStatus, tunErr = "error", L("не удалось запустить cloudflared: ", "could not start cloudflared: ", "cloudflared іске қосылмады: ")+err.Error()
+				tunStatus, tunErr = "error", MS("не удалось запустить cloudflared: ", "could not start cloudflared: ", "cloudflared іске қосылмады: ", err.Error())
 				tunMu.Unlock()
-				log.Println(tunErr)
+				log.Println(tunErr.S())
 				return
 			}
 			afterStart(cmd.Process.Pid)
@@ -123,7 +123,7 @@ func startTunnel(port int) {
 					if m := tunRe.FindString(line); m != "" {
 						tunMu.Lock()
 						if tunURL == "" {
-							tunURL, tunStatus, tunErr = m, "on", ""
+							tunURL, tunStatus, tunErr = m, "on", nil
 							log.Println("tunnel:", m)
 						}
 						tunMu.Unlock()
@@ -154,11 +154,11 @@ func startTunnel(port int) {
 			tail := strings.Join(lastLines, "\n")
 			llMu.Unlock()
 			tunStatus = "error"
-			tunErr = L("Туннель Cloudflare не поднялся. Проверьте интернет и что антивирус/фаервол не блокирует cloudflared.exe. Пробую снова…", "The Cloudflare tunnel did not come up. Check your internet connection and that antivirus/firewall is not blocking cloudflared.exe. Retrying…", "Cloudflare туннелі іске қосылмады. Интернетті және антивирус/брандмауэр cloudflared.exe-ні бұғаттамайтынын тексеріңіз. Қайта әрекет жасалуда…")
+			tunErr = M("Туннель Cloudflare не поднялся. Проверьте интернет и что антивирус/фаервол не блокирует cloudflared.exe. Пробую снова…", "The Cloudflare tunnel did not come up. Check your internet connection and that antivirus/firewall is not blocking cloudflared.exe. Retrying…", "Cloudflare туннелі іске қосылмады. Интернетті және антивирус/брандмауэр cloudflared.exe-ні бұғаттамайтынын тексеріңіз. Қайта әрекет жасалуда…")
 			tunMu.Unlock()
 			if stop {
 				tunMu.Lock()
-				tunStatus, tunErr = "off", ""
+				tunStatus, tunErr = "off", nil
 				tunMu.Unlock()
 				sendState()
 				return
@@ -177,7 +177,7 @@ func stopTunnel() {
 	tunMu.Lock()
 	tunStop = true
 	c := tunCmd
-	tunURL, tunStatus, tunErr = "", "off", ""
+	tunURL, tunStatus, tunErr = "", "off", nil
 	tunMu.Unlock()
 	if c != nil && c.Process != nil {
 		c.Process.Kill()

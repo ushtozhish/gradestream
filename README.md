@@ -24,7 +24,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 - [Why GradeStream](#why-gradestream)
 - [Remote editing review: sound in sync, smooth playback](#remote-editing-review-sound-in-sync-smooth-playback)
 - [Tour of the app](#tour-of-the-app)
-  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. 1920×1080, or 1080×1920 for vertical videos](#4-19201080-or-10801920-for-vertical-videos) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) ([full screen on iPhone](#full-screen-on-iphone)) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Tray icon, language, closing](#12-tray-icon-language-closing)
+  - [1. Control window](#1-control-window) · [2. Internet, Wi-Fi or both](#2-internet-wi-fi-or-both) · [3. Links and QR code](#3-links-and-qr-code) · [4. 1920×1080, or 1080×1920 for vertical videos](#4-19201080-or-10801920-for-vertical-videos) · [5. Quality](#5-quality) · [6. Audio](#6-audio) · [7. What the client sees](#7-what-the-client-sees) ([full screen on iPhone](#full-screen-on-iphone)) · [8. Scopes for the client](#8-scopes-for-the-client) · [9. Client markers](#9-client-markers) · [10. Marker screenshots and the comment summary](#10-marker-screenshots-and-the-comment-summary) · [11. Viewers](#11-viewers) · [12. Voice call](#12-voice-call) · [13. Tray icon, language, closing](#13-tray-icon-language-closing)
 - [Settings reference](#settings-reference)
 - [How it works](#how-it-works) · [Technical specification](#technical-specification) · [Color: what to trust](#color-what-to-trust-and-what-not-to)
 - [Installation](#installation) · [Quick start](#quick-start) · [Security and privacy](#security-and-privacy) · [Building from source](#building-from-source) · [Limitations](#limitations) · [Support the dev](#️-support-the-dev)
@@ -34,6 +34,7 @@ For colorists and editors: show a grade during a remote session or to everyone i
 - **Zero friction for the client.** One link, opened on a phone during a WhatsApp/Zoom call. No app, no account, no plug-ins.
 - **Built for grading reviews.** Clean Feed monitor in, a fixed 1920×1080 picture out (1080×1920 for vertical videos), color-tagged so the decoder reconstructs the RGB values Resolve outputs ([measured](#color-what-to-trust-and-what-not-to): mean ΔE2000 0.22).
 - **Feedback lands on the frame.** The client taps the image and types a comment; you see it on top of your Clean Feed monitor, and a screenshot of the exact frame they meant is saved with the note.
+- **Talk while you watch.** A built-in voice call: you, the director, the producer and the client talk over the picture without a separate Zoom; everyone can mute their own microphone.
 - **Remote or in the room.** Over the internet via Cloudflare Tunnel, or straight over Wi-Fi with no internet at all — or both at once.
 - **Also for editing reviews.** "Smooth & in sync" playback keeps sound in sync with the picture and frames evenly paced, so a remote director can judge cuts and timing ([measured](#remote-editing-review-sound-in-sync-smooth-playback)).
 
@@ -262,7 +263,24 @@ Each viewer is listed with the device type, how they're connected (via internet 
 
 <br clear="right">
 
-### 12. Tray icon, language, closing
+### 12. Voice call
+
+<img src="docs/img/panel-call.png" width="370" align="right" alt="Voice call panel: microphone, devices, volume, participants">
+
+Everyone who watches can also talk: you at the computer, the director, the producer, the client on their phones. Each person hears everybody except themselves.
+
+- **On the computer** — the **Voice call** panel. The call is on by default (untick **Viewers can join the call and talk** to hide it). **Turn microphone on** switches your microphone; next to it is your level. You can pick the **Microphone**, where the call is heard (**Call sound to**, e.g. headphones) and the **Call volume**.
+- **On the phone** — a **Call** tile appears. Tap it, enter a name (others see it, it's remembered) and tap **Join**: the microphone turns on. The **Microphone** tile mutes and unmutes it. Who is speaking is shown at the top of the screen, and the program sound is turned down while someone talks.
+- **The participant list** shows names, devices and microphones; **mute** next to a name, or **Turn off everyone's microphones**. Viewers can turn their microphone back on themselves.
+- **Delay** is about the same as the picture: the program relays voice in about 1–2 ms, plus a ~80 ms buffer on the listener and the network. Pauses are not sent, so the call adds almost no traffic (~130 kbit/s per speaking person).
+- **Use headphones** at the computer: otherwise your microphone picks up the program sound and the others' voices. If the program sound is captured from a whole output device and the call plays on the same device, the panel warns you — choose another output for the call or capture sound from the application (Resolve).
+- **Wi-Fi link:** browsers give a page its microphone only on a secure (https) link. On the Wi-Fi link (http) a viewer can listen but not talk; the call window offers to open the internet link instead (it needs internet; the picture then comes via Cloudflare).
+
+<img src="docs/img/client-call.png" width="560" alt="Client phone: the voice call window with participants, who is speaking at the top">
+
+<br clear="right">
+
+### 13. Tray icon, language, closing
 
 - GradeStream has its **own taskbar icon** (even though it uses the Edge/Chrome engine) and an icon **near the clock**: click to bring the window back; right-click for **Show window / Stop streaming / Exit**. The tooltip shows "live, viewers: N".
 - Minimizing during a live stream shows a one-time notification about where the app went.
@@ -417,6 +435,7 @@ Requires Microsoft Edge (preinstalled on Windows) or Google Chrome — GradeStre
 
 ## Security and privacy
 
+- **Voice call:** voices are relayed by the program and not recorded anywhere. Over the internet link they go through the same encrypted connection as the picture; over the Wi-Fi link they stay inside the local network (unencrypted).
 - The link contains a random key and stops working when the app is closed. A new link is generated on every launch.
 - The control window opens only on your PC.
 - **Internet mode:** the stream is encrypted (HTTPS) on both legs, but not end-to-end — Cloudflare decrypts it to forward it. Video is never recorded or stored. For material under a strict NDA, keep this in mind or use Wi-Fi mode.
@@ -442,13 +461,14 @@ The script downloads the official cloudflared, verifies Cloudflare's signature, 
 |---|---|
 | `app/` | the app: server, tunnel, WebRTC, audio capture (WASAPI), on-screen markers, tray; pages `web/host.html` (control window) and `web/view.html` (viewer) |
 | `installer/` | per-user installer (no admin rights), "Installed apps" registration, shortcuts |
-| `tests/` | measurements and checks: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `scopetest.js` (scope accuracy), `layouttest.js` (client layouts and scope switching, landscape and portrait screens), `alarmtest.js` (out-of-range alarm), `fullscreentest.js` (full screen with tiles, iPhone and others), `i18ntest.js` (EN / RU / KZ languages, text fitting, screenshots), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
+| `tests/` | measurements and checks: `colortest.js` (color, ΔE2000), `avtest.js` (sound/picture sync, frame pacing), `scopetest.js` (scope accuracy), `layouttest.js` (client layouts and scope switching, landscape and portrait screens), `alarmtest.js` (out-of-range alarm), `fullscreentest.js` (full screen with tiles, iPhone and others), `i18ntest.js` (EN / RU / KZ languages, text fitting, screenshots), `calltest.js` (voice call: three participants with their own microphones, mute, Wi-Fi listen-only), `run-all.sh` (runs everything) — also run by GitHub Actions on every change |
 | `tools/mkicon.py` | icon and Windows resource generation |
 
 ## Limitations
 
 - Windows 10/11 only (audio capture, on-screen markers and the tray use Windows APIs).
 - One monitor or one window is streamed.
+- Talking in the voice call needs the internet (https) link; on the Wi-Fi link a viewer can only listen.
 - 8-bit SDR only; output 1920×1080, or 1080×1920 for a monitor in portrait orientation.
 - On iPhone a true full screen with the tiles works only in Safari with the Fullscreen API flag on ([details](#full-screen-on-iphone)).
 - On-screen markers require Windows 10 2004+ and "Entire screen" capture. If Resolve shows the Clean Feed in exclusive fullscreen, the marker overlay can't appear on top of it.

@@ -49,3 +49,19 @@ func langPref() string {
 	defer setMu.Unlock()
 	return cfg.Lang
 }
+
+// Msg — текст, который хранится дольше одного показа (ошибки, предупреждения).
+// Переводится в момент показа, поэтому после смены языка сразу на новом языке.
+type Msg func() string
+
+func M(ru, en, kk string) Msg { return func() string { return L(ru, en, kk) } }
+
+// Msg с непереводимым хвостом (текст системной ошибки, имена сетей)
+func MS(ru, en, kk, tail string) Msg { return func() string { return L(ru, en, kk) + tail } }
+
+func (m Msg) S() string {
+	if m == nil {
+		return ""
+	}
+	return m()
+}

@@ -167,6 +167,8 @@ func openHostWindow(url string, detached bool) {
 		"--disable-background-timer-throttling",
 		"--disable-renderer-backgrounding",
 		"--disable-backgrounding-occluded-windows",
+		// Голоса звонка должны звучать сразу, без отдельного нажатия в окне
+		"--autoplay-policy=no-user-gesture-required",
 	)
 	if err := cmd.Start(); err != nil {
 		log.Println("browser start error:", err)
@@ -241,7 +243,8 @@ func openPath(p string) {
 }
 
 // Wi-Fi/Ethernet помечена как «Общедоступная» сеть — входящие подключения телефонов закрыты
-func networkProfileWarning() string {
+// Имена сетей, помеченных в Windows как «Общедоступная» (по одной в строке), или ""
+func publicNetworks() string {
 	c := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
 		`[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq 'Public' } | ForEach-Object { $_.Name }`)
 	hideWindow(c)
@@ -249,13 +252,7 @@ func networkProfileWarning() string {
 	if err != nil {
 		return ""
 	}
-	names := strings.TrimSpace(string(out))
-	if names == "" {
-		return ""
-	}
-	list := "«" + strings.ReplaceAll(names, "\r\n", "», «") + "»"
-	return L("Сеть "+list+" помечена в Windows как общедоступная — телефоны могут не подключиться. Сделайте её частной: Параметры → Сеть и Интернет → Wi-Fi (или Ethernet) → свойства сети → «Частная сеть».",
-		"The network "+list+" is marked Public in Windows — phones may fail to connect. Make it Private: Settings → Network & internet → Wi-Fi (or Ethernet) → network properties → Private network.", list+" желісі Windows-та қоғамдық деп белгіленген — телефондар қосыла алмауы мүмкін. Оны жеке етіңіз: Параметрлер → Желі және Интернет → Wi-Fi (немесе Ethernet) → желі қасиеттері → Жеке желі.")
+	return strings.TrimSpace(string(out))
 }
 
 // Язык по интерфейсу Windows: казахский (0x3f) → kk, русский (0x19) → ru, иначе en

@@ -24,7 +24,8 @@ func openHostWindow(url string, detached bool) {
 func documentsDir() string { h, _ := os.UserHomeDir(); return filepath.Join(h, "Documents") }
 func openPath(p string)    { log.Println("OPEN:", p) }
 
-func networkProfileWarning() string { return "" }
+// Не Windows: для проверки на тестовом стенде имя «общедоступной» сети можно задать переменной окружения
+func publicNetworks() string { return os.Getenv("GS_TEST_PUBLIC_NET") }
 
 func systemLang() string {
 	l := strings.ToLower(os.Getenv("LANG"))

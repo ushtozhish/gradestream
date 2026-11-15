@@ -46,8 +46,8 @@ var (
 	lanSendMu sync.Mutex
 	// счётчики для отчётов отправителя
 	lanVPkts, lanVOctets, lanAPkts, lanAOctets atomic.Uint32
-	lanErr                                     string
-	lanWarn                                    string
+	lanErr                                     Msg
+	lanWarn                                    Msg
 	h264Params                                 struct {
 		sync.Mutex
 		sps, pps [][]byte
@@ -130,6 +130,7 @@ func lanRoutes() *http.ServeMux {
 	})
 	mux.HandleFunc("/ws/view", func(w http.ResponseWriter, r *http.Request) { viewerWS(w, r, true) })
 	mux.HandleFunc("/icon.png", serveIcon)
+	mux.HandleFunc("/call.js", serveCallJS)
 	return mux
 }
 
@@ -158,19 +159,20 @@ func startLAN() error {
 		break
 	}
 	if lanMux == nil {
-		lanErr = L("не удалось открыть порт в локальной сети: ", "could not open a port on the local network: ", "жергілікті желіде порт ашу мүмкін болмады: ") + fmt.Sprint(err)
-		return errors.New(lanErr)
+		lanErr = MS("не удалось открыть порт в локальной сети: ", "could not open a port on the local network: ", "жергілікті желіде порт ашу мүмкін болмады: ", fmt.Sprint(err))
+		return errors.New(lanErr.S())
 	}
 	if err := setupLanAPI(); err != nil {
 		ln.Close()
 		lanMux.Close()
 		lanMux = nil
-		lanErr = err.Error()
+		e := err.Error()
+		lanErr = func() string { return e }
 		return err
 	}
 	lanSrv = &http.Server{Handler: lanRoutes(), ReadHeaderTimeout: 10 * time.Second}
 	go lanSrv.Serve(ln)
-	lanOn, lanErr = true, ""
+	lanOn, lanErr = true, nil
 	log.Printf("LAN mode on, port %d, addresses %v", lanPort, lanIPs())
 	go checkNetworkProfile()
 	return nil
@@ -248,13 +250,20 @@ func setupLanAPI() error {
 
 // Сеть Wi-Fi помечена как «Общедоступная» — Windows по умолчанию закрывает входящие подключения
 func checkNetworkProfile() {
-	w := networkProfileWarning()
+	names := publicNetworks()
+	var w Msg
+	if names != "" {
+		list := "«" + strings.ReplaceAll(names, "\r\n", "», «") + "»"
+		w = func() string {
+			return L("Сеть "+list+" помечена в Windows как общедоступная — телефоны могут не подключиться. Сделайте её частной: Параметры → Сеть и Интернет → Wi-Fi (или Ethernet) → свойства сети → «Частная сеть».",
+				"The network "+list+" is marked Public in Windows — phones may fail to connect. Make it Private: Settings → Network & internet → Wi-Fi (or Ethernet) → network properties → Private network.",
+				list+" желісі Windows-та қоғамдық деп белгіленген — телефондар қосыла алмауы мүмкін. Оны жеке етіңіз: Параметрлер → Желі және Интернет → Wi-Fi (немесе Ethernet) → желі қасиеттері → Жеке желі.")
+		}
+		log.Println("network warning: public networks", list)
+	}
 	lanMu.Lock()
 	lanWarn = w
 	lanMu.Unlock()
-	if w != "" {
-		log.Println("network warning:", w)
-	}
 	sendState()
 }
 
@@ -593,7 +602,7 @@ func lanActive() bool {
 
 func lanState() (links []string, errText, warn string) {
 	lanMu.Lock()
-	errText, warn = lanErr, lanWarn
+	errText, warn = lanErr.S(), lanWarn.S()
 	lanMu.Unlock()
 	return lanLinks(), errText, warn
 }

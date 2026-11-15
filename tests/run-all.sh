@@ -9,7 +9,7 @@ start() { # $1 = simulated network jitter, ms
   pkill -x "$(basename "$BIN")" 2>/dev/null || true
   for _ in $(seq 50); do pgrep -x "$(basename "$BIN")" >/dev/null || break; sleep 0.2; done
   rm -f "${TMPDIR:-/tmp}/gradestream/settings.json"
-  LANG=en_US.UTF-8 GS_NO_TUNNEL=1 GS_LAN_ANY=1 GS_TEST_JITTER_MS="$1" "$BIN" > gs.log 2>&1 &
+  LANG=en_US.UTF-8 GS_NO_TUNNEL=1 GS_LAN_ANY=1 GS_TEST_PUBLIC_NET="Office Wi-Fi" GS_TEST_JITTER_MS="$1" "$BIN" > gs.log 2>&1 &
   for _ in $(seq 50); do grep -q "room " gs.log 2>/dev/null && break; sleep 0.2; done
   sleep 0.5
 }
@@ -41,6 +41,11 @@ start() { # $1 = simulated network jitter, ms
   echo "## Interface languages (EN / RU / KZ)"
   echo '```'
   start 0; GS_LOG=gs.log node i18ntest.js 2>&1
+  echo '```'
+  echo
+  echo "## Voice call (host + viewer over the internet link + viewer over Wi-Fi)"
+  echo '```'
+  start 0; GS_LOG=gs.log node calltest.js 2>&1
   echo '```'
   echo
   echo "## Audio/video sync and frame pacing"

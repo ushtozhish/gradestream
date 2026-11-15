@@ -9,6 +9,12 @@ const overflow = page => page.evaluate(() => [...document.querySelectorAll('butt
   fs.mkdirSync('shots', { recursive: true });
   const { b, host, url } = await startHost({ draw: scene });
   let fail = 0;
+  // Server-side hints (e.g. «the Wi-Fi network is Public») are created in one language and must follow a later switch:
+  // turn on the Wi-Fi link while the interface is Russian, then switch languages
+  await host.click('#langSw [data-lang="ru"]'); await sleep(700);
+  await host.click('label:has(input[name=mode][value=both])'); await sleep(2000);
+  const warnRu = await host.evaluate(() => document.getElementById('lanWarn').textContent);
+  console.log(`Wi-Fi warning (test network «Office Wi-Fi»): ${warnRu ? 'shown' : 'MISSING'}`); if (!warnRu) fail++;
   for (const lg of ['en', 'ru', 'kk']) {
     await host.click(`#langSw [data-lang="${lg}"]`); await sleep(900);
     const r = await host.evaluate(() => ({ lang: document.documentElement.lang, on: document.querySelector('#langSw .on')?.dataset.lang,
@@ -17,7 +23,8 @@ const overflow = page => page.evaluate(() => [...document.querySelectorAll('butt
     const okLang = r.lang === lg && r.on === lg;
     const okText = lg === 'en' ? !CYR.test(r.text.replace(/Қазақша|Русский/g, '')) : lg === 'kk' ? KK.test(r.text) : CYR.test(r.text) && !KK.test(r.text);
     await host.screenshot({ path: `shots/host-${lg}.png`, fullPage: true });
-    console.log(`host ${lg}: lang=${r.lang} switch=${r.on} text=${okText ? 'ok' : 'WRONG LANGUAGE'} overflow=${ov.length ? ov.join(' | ') : 'none'}`);
+    const stray = lg === 'en' ? (r.text.replace(/Қазақша|Русский/g, '').match(/[^\n]*[А-Яа-яЁё][^\n]*/g) || []).slice(0, 3) : [];
+    console.log(`host ${lg}: lang=${r.lang} switch=${r.on} text=${okText ? 'ok' : 'WRONG LANGUAGE: ' + stray.join(' | ')} overflow=${ov.length ? ov.join(' | ') : 'none'}`);
     if (!okLang || !okText || ov.length) fail++;
   }
   // The program keeps the choice (server round trip): reload the host page, KZ must stay

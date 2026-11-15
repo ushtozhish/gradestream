@@ -181,6 +181,23 @@
       <div class="muted" id="audioInfo" data-en="Audio is sent only while streaming." data-kk="Дыбыс тек трансляция кезінде жіберіледі.">Звук передаётся только во время трансляции.</div>
     </div>
 
+
+    <div class="panel" id="callPanel">
+      <h2 data-en="Voice call" data-kk="Дауыстық қоңырау">Голосовой звонок</h2>
+      <label class="row" style="margin-top:0"><input type="checkbox" id="callOn" checked> <span data-en="Viewers can join the call and talk" data-kk="Көрермендер қоңырауға қосылып, сөйлесе алады">Зрители могут присоединиться и говорить</span></label>
+      <div class="row">
+        <button id="btnMic" disabled data-en="Turn microphone on" data-kk="Микрофонды қосу">Включить микрофон</button>
+        <div style="flex:1;min-width:60px;height:8px;background:#0d0d0d;border:1px solid var(--line);border-radius:4px;overflow:hidden"><div id="micBar" style="height:100%;width:0;background:var(--ok)"></div></div>
+      </div>
+      <div class="row"><label class="l" data-en="Microphone" data-kk="Микрофон">Микрофон</label><select id="micDev" style="flex:1;min-width:0"><option value="" data-en="Default (Windows)" data-kk="Әдепкі (Windows)">По умолчанию (Windows)</option></select></div>
+      <div class="row" id="callOutRow"><label class="l" data-en="Call sound to" data-kk="Қоңырау дыбысы">Звонок слышен в</label><select id="callOut" style="flex:1;min-width:0"><option value="" data-en="Default (Windows)" data-kk="Әдепкі (Windows)">По умолчанию (Windows)</option></select></div>
+      <div class="row"><label class="l" data-en="Call volume" data-kk="Қоңырау дыбысы деңгейі">Громкость звонка</label><input type="range" id="callVol" min="0" max="200" value="100" style="flex:1"></div>
+      <div id="callPeople" class="muted"></div>
+      <div class="row"><button id="btnMuteAll" disabled data-en="Turn off everyone’s microphones" data-kk="Барлығының микрофонын өшіру">Выключить микрофоны всем</button></div>
+      <div class="muted" id="callInfo"></div>
+      <div class="muted warn" id="callWarn" style="margin-top:6px"></div>
+    </div>
+
     <div class="panel">
       <h2><span data-en="Viewers" data-kk="Көрермендер">Зрители</span> <span id="vcount">0</span></h2>
       <div id="viewers" class="muted">пока никого</div>
@@ -216,6 +233,7 @@
   </div>
 </div>
 
+<script src="/call.js"></script>
 <script>
 const KEY = '__HOST_KEY__';
 
@@ -285,15 +303,17 @@ function connectWS() {
     sendJSON(diagMsg());
     syncClock(); sendPlayout();
     if (running && encoder) { forceKey(); sendLive(); applyAudio(); }
+    sendCall();
   };
   ws.onclose = () => setTimeout(connectWS, 1000);
   ws.onmessage = e => {
-    if (typeof e.data !== 'string') { onPCM(e.data); return; }
+    if (typeof e.data !== 'string') { if (GSCall.isOp(e.data)) voice.onPacket(e.data); else onPCM(e.data); return; }
     const m = JSON.parse(e.data);
     if (m.t === 'audio-list') { fillAudioList(m); return; }
     if (m.t === 'audio-state') { onAudioState(m); return; }
     if (m.t === 'monitors') { fillMonitors(m.list || []); return; }
     if (m.t === 'overlay-error') { $('ovInfo').innerHTML = `<span class="bad">${esc(m.error)}</span>`; return; }
+    if (m.t === 'call-state') { onCallState(m); return; }
     if (m.t === 'state') renderState(m);
     else if (m.t === 'kf') requestKey();
     else if (m.t === 'mark') showMark(m);
@@ -984,7 +1004,8 @@ function renderState(s) {
     else if (netMode === 'both') st = L('через интернет · ', 'via internet · ', 'интернет арқылы · ') + st;
     if (running && !v.lan && v.drops > 0 && v.queue > 20) st += ` · <span class="warn">${L('интернет клиента не успевает — снизь битрейт', 'the client’s connection can’t keep up — lower the bitrate', 'клиенттің байланысы үлгермейді — битрейтті азайтыңыз')}</span>`;
     if (running && audioOn && !v.lan) st += v.audio ? L(' · звук включён', ' · sound on', ' · дыбыс қосулы') + (v.pcm ? L(' (облегчённый)', ' (light)', ' (жеңіл)') : '') : L(' · звук не включил', ' · sound not turned on', ' · дыбыс қосылмаған');
-    return `<div class="viewer"><b>${v.dev}</b> · ${st}</div>`;
+    if (v.call) st += v.mic ? L(' · в звонке, микрофон вкл', ' · in the call, mic on', ' · қоңырауда, микрофон қосулы') : L(' · в звонке', ' · in the call', ' · қоңырауда');
+    return `<div class="viewer"><b>${esc(v.name || v.dev)}</b>${v.name ? ` <span class="muted">${esc(v.dev)}</span>` : ''} · ${st}</div>`;
   }).join('');
 }
 
@@ -1082,8 +1103,112 @@ function refreshDynamic() {
   sendJSON({ t: 'audio-list' });
   if (lastState) renderState(lastState);
   if ($('errBox').textContent) showBrowserProblem();
+  fillCallDevices(); renderCallPanel();
+  if (lastSnap && lastSnap.ok) showSnapFolder(lastSnap);
 }
 document.querySelectorAll('#langSw [data-lang]').forEach(b => b.onclick = () => setLangUI(b.dataset.lang, false));
+
+
+// ================= Голосовой звонок =================
+// Ведущий говорит в микрофон компьютера, зрители — в микрофон телефона. Каждый слышит всех, кроме себя.
+// Голоса идут отдельно от звука программы и звучат в этом окне (можно направить в наушники).
+let callCtx = null;
+const callPref = (() => { const d = { on: true, mic: '', out: '', vol: 100 }; try { return Object.assign(d, JSON.parse(localStorage.getItem('gs.call') || '{}')); } catch { return d; } })();
+const saveCall = () => { try { localStorage.setItem('gs.call', JSON.stringify(callPref)); } catch {} };
+const voice = GSCall.create({
+  send: b => { if (ws && ws.readyState === 1) ws.send(b); },
+  ctx: () => callCtx || (callCtx = new AudioContext({ latencyHint: 'interactive' })),
+  volume: callPref.vol / 100,
+});
+let callState = { on: false, people: [] };
+$('callOn').checked = callPref.on;
+$('callVol').value = callPref.vol;
+if (!('setSinkId' in AudioContext.prototype)) $('callOutRow').style.display = 'none';
+
+function sendCall() {
+  const on = $('callOn').checked;
+  sendJSON({ t: 'call', on });
+  if (on) {
+    voice.ensureAudio(); callCtx.resume().catch(() => {});
+    if (callPref.out) voice.setSink(callPref.out).catch(() => {});
+  }
+  sendJSON({ t: 'call-mic', on: on && voice.micOn });
+}
+$('callOn').onchange = () => {
+  callPref.on = $('callOn').checked; saveCall();
+  if (!callPref.on) voice.stopMic();
+  sendCall(); renderCallPanel();
+};
+async function hostMic(on) {
+  $('callInfo').innerHTML = '';
+  if (on) {
+    try { await voice.startMic(callPref.mic); }
+    catch (e) {
+      voice.stopMic();
+      const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      $('callInfo').innerHTML = `<span class="bad">${denied
+        ? L('Нет доступа к микрофону. Разрешите микрофон: значок замка или камеры в заголовке этого окна → «Микрофон» → «Разрешить».', 'No access to the microphone. Allow it: the lock or camera icon in this window’s title bar → Microphone → Allow.', 'Микрофонға рұқсат жоқ. Рұқсат беріңіз: осы терезе тақырыбындағы құлып немесе камера белгішесі → «Микрофон» → «Рұқсат ету».')
+        : L('Не удалось включить микрофон: ', 'Could not turn the microphone on: ', 'Микрофонды қосу мүмкін болмады: ') + esc(e && e.message || e)}</span>`;
+    }
+    fillCallDevices();
+  } else voice.stopMic();
+  sendJSON({ t: 'call-mic', on: voice.micOn });
+  renderCallPanel();
+}
+$('btnMic').onclick = () => hostMic(!voice.micOn);
+$('btnMuteAll').onclick = () => sendJSON({ t: 'call-mute' });
+$('callVol').oninput = () => { callPref.vol = +$('callVol').value; voice.setVolume(callPref.vol / 100); saveCall(); };
+$('micDev').onchange = () => { callPref.mic = $('micDev').value; saveCall(); if (voice.micOn) hostMic(true); };
+$('callOut').onchange = () => {
+  callPref.out = $('callOut').value; saveCall();
+  voice.setSink(callPref.out).catch(e => { $('callInfo').innerHTML = `<span class="bad">${L('Не удалось переключить выход: ', 'Could not switch the output: ', 'Шығысты ауыстыру мүмкін болмады: ')}${esc(e.message || e)}</span>`; });
+  renderCallPanel();
+};
+async function fillCallDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  let list = []; try { list = await navigator.mediaDevices.enumerateDevices(); } catch { return; }
+  const fill = (sel, kind, cur, base) => {
+    const items = list.filter(d => d.kind === kind && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+    sel.innerHTML = `<option value="">${L('По умолчанию (Windows)', 'Default (Windows)', 'Әдепкі (Windows)')}</option>` +
+      items.map((d, i) => `<option value="${esc(d.deviceId)}">${esc(d.label || base + ' ' + (i + 1))}</option>`).join('');
+    sel.value = items.some(d => d.deviceId === cur) ? cur : '';
+  };
+  fill($('micDev'), 'audioinput', callPref.mic, L('Микрофон', 'Microphone', 'Микрофон'));
+  fill($('callOut'), 'audiooutput', callPref.out, L('Выход', 'Output', 'Шығыс'));
+}
+navigator.mediaDevices?.addEventListener?.('devicechange', fillCallDevices);
+fillCallDevices();
+
+function onCallState(m) { callState = m; renderCallPanel(); }
+const MIC_SVG = on => `<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21${on ? '' : 'M4 4l16 16'}"/></svg>`;
+function renderCallPanel() {
+  const on = $('callOn').checked;
+  $('btnMic').disabled = !on;
+  $('btnMic').classList.toggle('primary', voice.micOn);
+  $('btnMic').textContent = voice.micOn ? L('Выключить микрофон', 'Turn microphone off', 'Микрофонды өшіру') : L('Включить микрофон', 'Turn microphone on', 'Микрофонды қосу');
+  const others = (callState.people || []).filter(p => !p.host), talk = new Set(voice.talking());
+  $('btnMuteAll').disabled = !others.some(p => p.mic);
+  $('callPeople').className = others.length ? '' : 'muted';
+  const html = !on ? L('Звонок выключен — зрители его не видят.', 'The call is off — viewers don’t see it.', 'Қоңырау өшірулі — көрермендер оны көрмейді.')
+    : !others.length ? L('В звонке пока никого. У зрителей появится кнопка «Звонок».', 'Nobody in the call yet. Viewers get a «Call» button.', 'Қоңырауда әзірге ешкім жоқ. Көрермендерде «Қоңырау» батырмасы пайда болады.')
+    : others.map(p => `<div class="viewer" style="${talk.has(p.id) ? 'color:var(--acc)' : ''}"><span style="color:${p.mic ? 'var(--ok)' : 'var(--dim)'}">${MIC_SVG(p.mic)}</span> <b>${esc(p.name || p.dev || L('устройство', 'device', 'құрылғы'))}</b>${p.name && p.dev ? ` <span class="muted">${esc(p.dev)}</span>` : ''}${p.lan && !p.mic ? ` <span class="muted">· ${L('только слушает (ссылка Wi-Fi)', 'listening only (Wi-Fi link)', 'тек тыңдайды (Wi-Fi сілтемесі)')}</span>` : ''}${p.mic ? ` <button class="link" data-mute="${esc(p.id)}">${L('выключить микрофон', 'mute', 'микрофонды өшіру')}</button>` : ''}</div>`).join('');
+  if (html !== renderCallPanel.last) { renderCallPanel.last = html; $('callPeople').innerHTML = html; }
+  $('callPeople').querySelectorAll('[data-mute]').forEach(b => b.onclick = () => sendJSON({ t: 'call-mute', id: b.dataset.mute }));
+  if (!$('callInfo').querySelector('.bad')) $('callInfo').textContent = on ? L('Говорите в наушниках: иначе собеседники услышат через ваш микрофон звук программы и сами себя.', 'Use headphones: otherwise the others will hear the program sound and themselves through your microphone.', 'Құлаққаппен сөйлеңіз: әйтпесе басқалар сіздің микрофоныңыз арқылы бағдарлама дыбысын және өздерін естиді.') : '';
+  // Звук программы снимается со всего устройства, а звонок играет туда же — зрители услышат себя с задержкой
+  const capDev = typeof audioWanted === 'string' && audioWanted.startsWith('dev:');
+  const norm = t => String(t || '').toLowerCase().replace(/^(default|по умолчанию|әдепкі)\s*[-—:]\s*/, '').trim();
+  const capName = norm($('audioSrc').selectedOptions[0]?.textContent), outName = norm($('callOut').selectedOptions[0]?.textContent);
+  const same = !callPref.out || (capName && outName && (capName.includes(outName) || outName.includes(capName)));
+  $('callWarn').textContent = on && capDev && same && others.length
+    ? L('Звук программы снимается со всего устройства вывода. Если голоса звонка звучат в нём же, они попадут в трансляцию, и зрители услышат себя с задержкой. Выберите для звонка другой выход (например, наушники) или берите звук из приложения (Resolve).', 'The program sound is captured from a whole output device. If the call plays on the same device, the voices get into the stream and viewers hear themselves delayed. Choose another output for the call (e.g. headphones) or capture sound from the application (Resolve).', 'Бағдарлама дыбысы бүкіл шығару құрылғысынан алынады. Қоңырау дауыстары сол құрылғыда ойнаса, олар трансляцияға түсіп, көрермендер өздерін кідіріспен естиді. Қоңырау үшін басқа шығысты таңдаңыз (мысалы, құлаққап) немесе дыбысты қолданбадан (Resolve) алыңыз.')
+    : '';
+}
+setInterval(() => {
+  $('micBar').style.width = (voice.micOn ? Math.round(voice.micLevel * 100) : 0) + '%';
+  if (callState.on && (callState.people || []).length > 1) renderCallPanel();
+}, 200);
+renderCallPanel();
 
 // ---------- Превью во весь экран ----------
 function toggleFS() {
@@ -1101,7 +1226,9 @@ $('scopesAllow').onchange = () => { try { localStorage.setItem('gs.scopes', $('s
 $('playout').onchange = () => { try { localStorage.setItem('gs.playout', $('playout').value); } catch {} sendPlayout(); };
 
 // ---------- Папка для скриншотов ----------
+let lastSnap = null;
 function showSnapFolder(j) {
+  lastSnap = j;
   if (!j.ok) { alert(L('Папка не выбрана: ', 'Folder not set: ', 'Қалта көрсетілмеген: ') + j.error); return; }
   const sep = j.base.includes('\\') ? '\\' : '/';
   $('snapPath').textContent = j.current || (j.subfolder ? j.base + sep + L('Сессия <дата время>', 'Session <date time>', 'Сессия <күні уақыты>') : j.base);
